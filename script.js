@@ -117,8 +117,8 @@ const PRICE_MAP = {
     uzunomichi: 6000
   },
   unit: {
-    senbondo_zenmen: 9000
-    yaraido_zenmen:0
+    senbondo_zenmen: 9000,
+    yaraidozenmen: 0
   }
 };
 
