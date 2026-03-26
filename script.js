@@ -122,6 +122,7 @@ const PRICE_MAP = {
   }
 };
 
+
   const INQUIRY_OPTIONS = {
     unit: new Set(["senbondo_zenmen", "yaraidozenmen"])
   };
@@ -141,8 +142,19 @@ const PRICE_MAP = {
     return document.getElementById(id);
   }
 
+  function toHalfWidth(str) {
+    return str.replace(/[！-～]/g, s =>
+      String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+    ).replace(/　/g, " ");
+  }
+
+  function normalizePassword(str) {
+    return toHalfWidth(String(str)).trim();
+  }
+
   function toast(msg) {
     const t = $("toast");
+    if (!t) return;
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toast._timer);
@@ -152,18 +164,20 @@ const PRICE_MAP = {
   }
 
   function setImg(id, src) {
+    const el = $(id);
+    if (!el) return;
     const bust = "v=" + Date.now();
-    $(id).src = src + (src.includes("?") ? "&" + bust : "?" + bust);
+    el.src = src + (src.includes("?") ? "&" + bust : "?" + bust);
   }
 
   function setSelText(selId, label) {
-    $(selId).textContent = label;
+    const el = $(selId);
+    if (el) el.textContent = label;
   }
 
   function setActive(partKey, optId) {
     const wrap = document.querySelector(`[data-part="${partKey}"]`);
     if (!wrap) return;
-
     wrap.querySelectorAll("button.opt").forEach((btn) => {
       btn.setAttribute("aria-pressed", btn.dataset.opt === optId ? "true" : "false");
     });
@@ -190,7 +204,6 @@ const PRICE_MAP = {
     if (state.center && state.center !== "normal") {
       state.hashira = "on";
     }
-
     if (isRestrictedDoorSelected() && !YARAIDO_UNIT_IDS.has(state.unit)) {
       state.unit = "yaraido2";
     }
@@ -211,7 +224,6 @@ const PRICE_MAP = {
     const unitWrap = document.querySelector(`[data-part="unit"]`);
     if (unitWrap) {
       const restrictUnit = isRestrictedDoorSelected();
-
       unitWrap.querySelectorAll("button.opt").forEach((btn) => {
         const isAllowed = !restrictUnit || YARAIDO_UNIT_IDS.has(btn.dataset.opt);
         btn.disabled = !isAllowed;
@@ -227,9 +239,7 @@ const PRICE_MAP = {
 
     Object.keys(state).forEach((partKey) => {
       const optId = state[partKey];
-      if (!optId || optId === "normal" || optId === "on" || optId === "off") {
-        return;
-      }
+      if (!optId || optId === "normal" || optId === "on" || optId === "off") return;
 
       if (INQUIRY_OPTIONS[partKey] && INQUIRY_OPTIONS[partKey].has(optId)) {
         inquiry = true;
@@ -263,25 +273,24 @@ const PRICE_MAP = {
   function updateEstimate() {
     const est = calcEstimate();
 
-    $("price-base").textContent = formatYen(est.base);
-    $("price-add").textContent = formatYen(est.add);
+    if ($("price-base")) $("price-base").textContent = formatYen(est.base);
+    if ($("price-add")) $("price-add").textContent = formatYen(est.add);
 
     if (est.inquiry) {
-      $("price-total").textContent = "お問い合わせください";
-      $("price-note").textContent = "※すべて税別価格です。";
-      $("price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
+      if ($("price-total")) $("price-total").textContent = "お問い合わせください";
+      if ($("price-note")) $("price-note").textContent = "※すべて税別価格です。";
+      if ($("price-breakdown")) $("price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
       return;
     }
 
-    $("price-total").textContent = formatYen(est.total);
-    $("price-note").textContent = "※すべて税別価格です。";
+    if ($("price-total")) $("price-total").textContent = formatYen(est.total);
+    if ($("price-note")) $("price-note").textContent = "※すべて税別価格です。";
 
-    if (est.breakdown.length === 0) {
-      $("price-breakdown").textContent = "加算パーツはありません。";
-    } else {
-      $("price-breakdown").textContent = est.breakdown
-        .map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`)
-        .join("\n");
+    if ($("price-breakdown")) {
+      $("price-breakdown").textContent =
+        est.breakdown.length === 0
+          ? "加算パーツはありません。"
+          : est.breakdown.map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
     }
   }
 
@@ -291,7 +300,6 @@ const PRICE_MAP = {
     PARTS.forEach((part) => {
       const opt = getOpt(part.key, state[part.key]);
       if (!opt) return;
-
       setImg(part.layerId, opt.file);
       setSelText(part.selId, opt.label);
       setActive(part.key, opt.id);
@@ -334,6 +342,7 @@ const PRICE_MAP = {
 
   function renderControls() {
     const root = $("controls");
+    if (!root) return;
     root.innerHTML = "";
 
     PARTS.forEach((part) => {
@@ -374,147 +383,78 @@ const PRICE_MAP = {
 
     normalizeState();
     syncUIFromState();
-    toast("初期状態に戻しました");
-  }
-
-  function fillExportSheet() {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mi = String(now.getMinutes()).padStart(2, "0");
-    const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
-
-    const staffName = $("staffName").value.trim() || "未入力";
-    const customerName = $("customerName").value.trim() || "未入力";
-    const memo = $("memo").value.trim() || "なし";
-
-    $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様`;
-    $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
-
-    $("exp-base").src = $("layer-base").src;
-    $("exp-unit").src = $("layer-unit").src;
-    $("exp-back").src = $("layer-back").src;
-    $("exp-center").src = $("layer-center").src;
-    $("exp-hashira").src = $("layer-hashira").src;
-    $("exp-door").src = $("layer-door").src;
-
-    $("exp-sel-door").textContent = $("sel-door").textContent;
-    $("exp-sel-center").textContent = $("sel-center").textContent;
-    $("exp-sel-hashira").textContent = $("sel-hashira").textContent === "ON" ? "有り" : "無し";
-    $("exp-sel-back").textContent = $("sel-back").textContent;
-    $("exp-sel-unit").textContent = $("sel-unit").textContent;
-
-    const est = calcEstimate();
-    $("exp-price-base").textContent = formatYen(est.base);
-    $("exp-price-add").textContent = formatYen(est.add);
-
-    if (est.inquiry) {
-      $("exp-price-total").textContent = "お問い合わせください";
-      $("exp-price-note").textContent = "すべて税別価格です。";
-      $("exp-price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
-    } else {
-      $("exp-price-total").textContent = formatYen(est.total);
-      $("exp-price-note").textContent = "すべて税別価格です。";
-      $("exp-price-breakdown").textContent =
-        est.breakdown.length === 0
-          ? "加算パーツはありません。"
-          : est.breakdown.map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
-    }
-
-    $("exp-memo").textContent = memo;
-  }
-
-  async function exportPdf() {
-    try {
-      fillExportSheet();
-
-      const sheet = $("exportSheet");
-      const canvas = await html2canvas(sheet, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true
-      });
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.98);
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 6;
-      const usableW = pageW - margin * 2;
-      const usableH = pageH - margin * 2;
-
-      pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
-
-      const now = new Date();
-      const fileName =
-        "senbondo_estimate_" +
-        now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, "0") +
-        String(now.getDate()).padStart(2, "0") + "_" +
-        String(now.getHours()).padStart(2, "0") +
-        String(now.getMinutes()).padStart(2, "0") + ".pdf";
-
-      pdf.save(fileName);
-      toast("PDFを書き出しました");
-    } catch (err) {
-      console.error(err);
-      toast("PDF出力に失敗しました");
-    }
   }
 
   function unlockApp() {
-    $("lockScreen").style.display = "none";
-    $("app").classList.add("show");
-    sessionStorage.setItem(AUTH_KEY, "ok");
+    const lockScreen = $("lockScreen");
+    const app = $("app");
+    if (lockScreen) lockScreen.style.display = "none";
+    if (app) app.classList.add("show");
+    try {
+      sessionStorage.setItem(AUTH_KEY, "ok");
+    } catch (e) {}
   }
 
   function lockApp() {
-    sessionStorage.removeItem(AUTH_KEY);
-    $("app").classList.remove("show");
-    $("lockScreen").style.display = "flex";
-    $("passwordInput").value = "";
-    $("lockError").textContent = "";
+    try {
+      sessionStorage.removeItem(AUTH_KEY);
+    } catch (e) {}
+    const app = $("app");
+    const lockScreen = $("lockScreen");
+    if (app) app.classList.remove("show");
+    if (lockScreen) lockScreen.style.display = "flex";
+    if ($("passwordInput")) $("passwordInput").value = "";
+    if ($("lockError")) $("lockError").textContent = "";
   }
 
   function tryUnlock() {
-    const value = $("passwordInput").value.trim();
+    const input = $("passwordInput");
+    const error = $("lockError");
+    const value = normalizePassword(input ? input.value : "");
+
     if (value === PASSWORD) {
+      if (error) error.textContent = "";
       unlockApp();
       toast("ロックを解除しました");
     } else {
-      $("lockError").textContent = "パスワードが違います。";
+      if (error) error.textContent = "パスワードが違います。";
     }
   }
 
-  $("unlockBtn").addEventListener("click", tryUnlock);
-  $("passwordInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      tryUnlock();
-    }
-  });
+  const unlockBtn = $("unlockBtn");
+  const passwordInput = $("passwordInput");
+  const lockBackBtn = $("lockBackBtn");
+  const resetBtn = $("resetBtn");
 
-  $("lockBackBtn").addEventListener("click", () => {
-    if (confirm("画面を施錠しますか？")) {
-      lockApp();
-    }
-  });
+  if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
+  if (passwordInput) {
+    passwordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") tryUnlock();
+    });
+  }
 
-  $("resetBtn").addEventListener("click", () => {
-    if (confirm("カスタマイズを初期状態に戻しますか？")) {
-      resetAll();
-    }
-  });
+  if (lockBackBtn) {
+    lockBackBtn.addEventListener("click", () => {
+      if (confirm("画面を施錠しますか？")) lockApp();
+    });
+  }
 
-  $("pdfBtn").addEventListener("click", exportPdf);
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      if (confirm("カスタマイズを初期状態に戻しますか？")) resetAll();
+    });
+  }
 
   renderControls();
   resetAll();
 
-  if (sessionStorage.getItem(AUTH_KEY) === "ok") {
-    unlockApp();
+  try {
+    if (sessionStorage.getItem(AUTH_KEY) === "ok") {
+      unlockApp();
+    }
+  } catch (e) {}
+
+  if (passwordInput) {
+    passwordInput.focus();
   }
 });
