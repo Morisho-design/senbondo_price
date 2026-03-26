@@ -1,1150 +1,146 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>千本堂カスタマイズ（見積機能付き）</title>
-
-<style>
-:root{
-  --bg:#ffffff;
-  --panel:#f3f4f6;
-  --panel2:#ffffff;
-  --text:#111827;
-  --muted:#6b7280;
-  --border:#e5e7eb;
-  --btn:#e5e7eb;
-  --btnText:#111827;
-  --btnActive:#2563eb;
-  --btnActiveText:#ffffff;
-  --danger:#dc2626;
-  --radius:18px;
-  --shadow:0 10px 30px rgba(0,0,0,.08);
-}
-
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;
-  background:var(--bg);
-  color:var(--text);
-}
-
-/* ===== Lock Screen ===== */
-.lockScreen{
-  position:fixed;
-  inset:0;
-  background:linear-gradient(180deg,#f9fafb 0%,#eef2f7 100%);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:24px;
-  z-index:9999;
-}
-.lockCard{
-  width:min(420px,100%);
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:22px;
-  box-shadow:var(--shadow);
-  padding:24px;
-}
-.lockCard h1{
-  margin:0 0 8px 0;
-  font-size:22px;
-}
-.lockCard p{
-  margin:0 0 16px 0;
-  color:var(--muted);
-  line-height:1.6;
-  font-size:14px;
-}
-.lockField{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.lockField input{
-  width:100%;
-  padding:12px 14px;
-  border:1px solid var(--border);
-  border-radius:14px;
-  font:inherit;
-}
-.lockActions{
-  display:flex;
-  gap:10px;
-  margin-top:12px;
-}
-.lockBtn{
-  border:none;
-  border-radius:14px;
-  padding:12px 16px;
-  font:inherit;
-  cursor:pointer;
-}
-.lockBtn.primary{
-  background:#111827;
-  color:#fff;
-  flex:1;
-}
-.lockBtn.secondary{
-  background:#f3f4f6;
-  color:#111827;
-}
-.lockError{
-  margin-top:10px;
-  color:var(--danger);
-  font-size:13px;
-  min-height:1.2em;
-}
-
-/* ===== App ===== */
-.app{
-  display:none;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-  padding:16px;
-  min-height:100vh;
-}
-.app.show{
-  display:grid;
-}
-
-@media (max-width:980px){
-  .app.show{
-    grid-template-columns:1fr;
-    grid-template-rows:auto auto;
-  }
-  .viewerCard{order:0}
-  .menuCard{order:1}
-}
-
-.menuCard{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:14px;
-  overflow:auto;
-  box-shadow:var(--shadow);
-  max-height:calc(100vh - 32px);
-  min-width:0;
-}
-
-.viewerCard{
-  background:var(--panel2);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:14px;
-  box-shadow:var(--shadow);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-}
-
-/* ===== Stage ===== */
-.stage{
-  position:relative;
-  width:100%;
-  aspect-ratio:1 / 1;
-  max-height:calc(100vh - 60px);
-  background:#fff;
-}
-.layer{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  pointer-events:none;
-  user-select:none;
-  -webkit-user-drag:none;
-}
-
-/* ===== UI ===== */
-.header{
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-  flex-wrap:wrap;
-}
-.header h1{
-  font-size:14px;
-  margin:0;
-  color:var(--muted);
-  font-weight:700;
-}
-.headerBtns{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-}
-
-.resetBtn,
-.lockBackBtn{
-  border:1px solid var(--border);
-  background:#f9fafb;
-  border-radius:10px;
-  padding:4px 10px;
-  font-size:12px;
-  cursor:pointer;
-  height:28px;
-  width:auto;
-  color:#6b7280;
-}
-.resetBtn:hover,
-.lockBackBtn:hover{
-  background:#f3f4f6;
-}
-
-.pdfBtn{
-  border:1px solid var(--border);
-  background:#fff;
-  border-radius:12px;
-  padding:10px 12px;
-  cursor:pointer;
-  min-height:40px;
-  width:100%;
-}
-.pdfBtn:hover{
-  filter:brightness(.98);
-}
-
-.group{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:12px;
-  margin-bottom:12px;
-}
-.groupTitle{
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:10px;
-  margin:0 0 10px 0;
-}
-.groupTitle h3{
-  font-size:14px;
-  margin:0;
-}
-.groupTitle .note{
-  font-size:12px;
-  color:var(--muted);
-}
-
-.btnGrid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-}
-
-button.opt{
-  border:1px solid var(--border);
-  background:var(--btn);
-  color:var(--btnText);
-  border-radius:12px;
-  padding:10px 12px;
-  font-size:13px;
-  cursor:pointer;
-  min-height:40px;
-}
-button.opt[aria-pressed="true"]{
-  background:var(--btnActive);
-  color:var(--btnActiveText);
-  border-color:transparent;
-}
-button.opt:disabled{
-  opacity:.4;
-  cursor:not-allowed;
-}
-
-.current,
-.memoBox,
-.priceBox{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:12px;
-  margin-top:12px;
-}
-.current h4,
-.memoBox h4,
-.priceBox h4{
-  margin:0 0 8px 0;
-  font-size:13px;
-  color:var(--muted);
-}
-
-.row,
-.priceRow{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  padding:6px 0;
-  border-top:1px dashed var(--border);
-  font-size:13px;
-}
-.row:first-of-type,
-.priceRow:first-of-type{
-  border-top:none;
-}
-
-.k,
-.priceLabel{
-  color:var(--muted);
-}
-.v,
-.priceValue{
-  font-weight:700;
-}
-.priceTotal{
-  font-size:18px;
-  font-weight:800;
-}
-.priceNote{
-  margin-top:8px;
-  font-size:12px;
-  color:var(--muted);
-  line-height:1.5;
-}
-.priceBreakdown{
-  margin-top:8px;
-  white-space:pre-wrap;
-  line-height:1.6;
-  font-size:12px;
-  color:#374151;
-  background:#f9fafb;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:10px 12px;
-}
-
-textarea,
-input[type="text"]{
-  width:100%;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  font:inherit;
-  background:#fff;
-  color:var(--text);
-}
-
-textarea{
-  min-height:120px;
-  resize:vertical;
-}
-
-.field{
-  margin-top:10px;
-}
-.field label{
-  display:block;
-  font-size:12px;
-  color:var(--muted);
-  margin-bottom:6px;
-}
-
-.inputSuffixWrap{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.inputSuffixWrap input{
-  flex:1;
-}
-.inputSuffix{
-  color:var(--muted);
-  font-size:14px;
-  white-space:nowrap;
-}
-.bottomActions{
-  margin-top:12px;
-}
-
-.toast{
-  position:fixed;
-  left:50%;
-  bottom:18px;
-  transform:translateX(-50%);
-  background:rgba(17,24,39,.92);
-  color:#fff;
-  padding:10px 12px;
-  border-radius:12px;
-  font-size:13px;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .18s ease;
-  z-index:999;
-}
-.toast.show{opacity:1}
-
-/* ===== hidden export sheet ===== */
-.exportSheet{
-  position:fixed;
-  left:-99999px;
-  top:0;
-  width:794px;
-  height:1123px;
-  background:#fff;
-  color:#111;
-  padding:22px;
-  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;
-  overflow:hidden;
-}
-
-.exportTitle{
-  font-size:20px;
-  font-weight:700;
-  line-height:1.35;
-  margin-bottom:4px;
-}
-.exportMeta{
-  font-size:12px;
-  color:#666;
-  margin-bottom:10px;
-}
-
-.exportImageSection{
-  height:430px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  margin-bottom:12px;
-}
-.exportImageWrap{
-  width:100%;
-  height:100%;
-  border:1px solid #ddd;
-  border-radius:12px;
-  padding:10px;
-  background:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.exportStage{
-  position:relative;
-  width:100%;
-  max-width:430px;
-  aspect-ratio:1 / 1;
-  background:#fff;
-}
-.exportLayer{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  object-position:center;
-}
-
-.exportDetailSection{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.exportSection h3{
-  font-size:14px;
-  margin:0 0 6px 0;
-}
-.exportLine{
-  padding:6px 0;
-  border-top:1px solid #eee;
-  font-size:12px;
-  line-height:1.5;
-}
-.exportLine:first-of-type{
-  border-top:none;
-}
-.exportLine span{
-  font-weight:700;
-}
-
-.exportPriceBox{
-  border:1px solid #eee;
-  border-radius:12px;
-  padding:10px;
-}
-.exportPriceRow{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  padding:5px 0;
-  border-top:1px dashed #eee;
-  font-size:12px;
-}
-.exportPriceRow:first-of-type{
-  border-top:none;
-}
-.exportPriceBreakdown{
-  margin-top:8px;
-  white-space:pre-wrap;
-  line-height:1.5;
-  font-size:11px;
-  background:#fafafa;
-  border:1px solid #eee;
-  border-radius:10px;
-  padding:8px 10px;
-}
-.exportMemo{
-  white-space:pre-wrap;
-  line-height:1.5;
-  font-size:12px;
-  border:1px solid #eee;
-  border-radius:12px;
-  padding:10px;
-  min-height:120px;
-  max-height:180px;
-  overflow:hidden;
-}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>千本堂カスタマイズ（見積機能付き）</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div id="lockScreen" class="lockScreen">
-  <div class="lockCard">
-    <h1>見積機能付き版</h1>
-    <p>このページはパスワード保護されています。<br>閲覧するにはパスワードを入力してください。</p>
+  <div id="lockScreen" class="lockScreen">
+    <div class="lockCard">
+      <h1>見積機能付き版</h1>
+      <p>このページはパスワード保護されています。<br>閲覧するにはパスワードを入力してください。</p>
 
-    <div class="lockField">
-      <input id="passwordInput" type="password" inputmode="numeric" placeholder="パスワードを入力">
-    </div>
-
-    <div class="lockActions">
-      <button id="unlockBtn" class="lockBtn primary">入室</button>
-    </div>
-
-    <div id="lockError" class="lockError"></div>
-  </div>
-</div>
-
-<div id="app" class="app">
-
-  <section class="viewerCard">
-    <div class="stage" id="stage">
-      <img id="layer-base" class="layer" alt="base">
-      <img id="layer-unit" class="layer" alt="unit">
-      <img id="layer-back" class="layer" alt="back">
-      <img id="layer-center" class="layer" alt="center">
-      <img id="layer-hashira" class="layer" alt="hashira">
-      <img id="layer-door" class="layer" alt="door">
-    </div>
-  </section>
-
-  <aside class="menuCard">
-
-    <div class="header">
-      <h1>千本堂 カスタマイズ（見積機能付き）</h1>
-      <div class="headerBtns">
-        <button id="resetBtn" class="resetBtn">初期状態に戻す</button>
-        <button id="lockBackBtn" class="lockBackBtn">施錠</button>
+      <div class="lockField">
+        <input id="passwordInput" type="password" inputmode="numeric" placeholder="パスワードを入力">
       </div>
+
+      <div class="lockActions">
+        <button id="unlockBtn" class="lockBtn primary" type="button">入室</button>
+      </div>
+
+      <div id="lockError" class="lockError"></div>
     </div>
+  </div>
 
-    <div id="controls"></div>
+  <div id="app" class="app">
+    <section class="viewerCard">
+      <div class="stage" id="stage">
+        <img id="layer-base" class="layer" alt="base">
+        <img id="layer-unit" class="layer" alt="unit">
+        <img id="layer-back" class="layer" alt="back">
+        <img id="layer-center" class="layer" alt="center">
+        <img id="layer-hashira" class="layer" alt="hashira">
+        <img id="layer-door" class="layer" alt="door">
+      </div>
+    </section>
 
-    <div class="current">
-      <h4>現在の選択</h4>
-      <div class="row"><div class="k">上台戸板</div><div class="v" id="sel-door">通常</div></div>
-      <div class="row"><div class="k">背板中央</div><div class="v" id="sel-center">未選択</div></div>
-      <div class="row"><div class="k">柱</div><div class="v" id="sel-hashira">ON</div></div>
-      <div class="row"><div class="k">背板全面</div><div class="v" id="sel-back">通常</div></div>
-      <div class="row"><div class="k">下台戸板</div><div class="v" id="sel-unit">通常</div></div>
-    </div>
-
-    <div class="priceBox">
-      <h4>概算見積</h4>
-      <div class="priceRow"><div class="priceLabel">本体価格</div><div class="priceValue" id="price-base">¥0</div></div>
-      <div class="priceRow"><div class="priceLabel">加算合計</div><div class="priceValue" id="price-add">¥0</div></div>
-      <div class="priceRow"><div class="priceLabel">合計</div><div class="priceValue priceTotal" id="price-total">¥0</div></div>
-      <div class="priceNote" id="price-note">※すべて税別価格です。</div>
-      <div class="priceBreakdown" id="price-breakdown">加算パーツはありません。</div>
-    </div>
-
-    <div class="memoBox">
-      <h4>備考</h4>
-      <textarea id="memo" placeholder="備考を入力してください"></textarea>
-
-      <div class="field">
-        <label for="staffName">担当者名</label>
-        <div class="inputSuffixWrap">
-          <input id="staffName" type="text" placeholder="担当者名を入力">
+    <aside class="menuCard">
+      <div class="header">
+        <h1>千本堂 カスタマイズ（見積機能付き）</h1>
+        <div class="headerBtns">
+          <button id="resetBtn" class="resetBtn" type="button">初期状態に戻す</button>
+          <button id="lockBackBtn" class="lockBackBtn" type="button">施錠</button>
         </div>
       </div>
 
-      <div class="field">
-        <label for="customerName">お客様名</label>
-        <div class="inputSuffixWrap">
-          <input id="customerName" type="text" placeholder="お客様名を入力">
-          <span class="inputSuffix">様</span>
+      <div id="controls"></div>
+
+      <div class="current">
+        <h4>現在の選択</h4>
+        <div class="row"><div class="k">上台戸板</div><div class="v" id="sel-door">通常</div></div>
+        <div class="row"><div class="k">背板中央</div><div class="v" id="sel-center">未選択</div></div>
+        <div class="row"><div class="k">柱</div><div class="v" id="sel-hashira">ON</div></div>
+        <div class="row"><div class="k">背板全面</div><div class="v" id="sel-back">通常</div></div>
+        <div class="row"><div class="k">下台戸板</div><div class="v" id="sel-unit">通常</div></div>
+      </div>
+
+      <div class="priceBox">
+        <h4>概算見積</h4>
+        <div class="priceRow"><div class="priceLabel">本体価格</div><div class="priceValue" id="price-base">¥0</div></div>
+        <div class="priceRow"><div class="priceLabel">加算合計</div><div class="priceValue" id="price-add">¥0</div></div>
+        <div class="priceRow"><div class="priceLabel">合計</div><div class="priceValue priceTotal" id="price-total">¥0</div></div>
+        <div class="priceNote" id="price-note">※すべて税別価格です。</div>
+        <div class="priceBreakdown" id="price-breakdown">加算パーツはありません。</div>
+      </div>
+
+      <div class="memoBox">
+        <h4>備考</h4>
+        <textarea id="memo" placeholder="備考を入力してください"></textarea>
+
+        <div class="field">
+          <label for="staffName">担当者名</label>
+          <div class="inputSuffixWrap">
+            <input id="staffName" type="text" placeholder="担当者名を入力">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="customerName">お客様名</label>
+          <div class="inputSuffixWrap">
+            <input id="customerName" type="text" placeholder="お客様名を入力">
+            <span class="inputSuffix">様</span>
+          </div>
+        </div>
+
+        <div class="bottomActions">
+          <button id="pdfBtn" class="pdfBtn" type="button">PDF出力</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div id="exportSheet" class="exportSheet">
+    <div id="exportTitle" class="exportTitle"></div>
+    <div id="exportMeta" class="exportMeta"></div>
+
+    <div class="exportImageSection">
+      <div class="exportImageWrap">
+        <div class="exportStage">
+          <img id="exp-base" class="exportLayer" alt="">
+          <img id="exp-unit" class="exportLayer" alt="">
+          <img id="exp-back" class="exportLayer" alt="">
+          <img id="exp-center" class="exportLayer" alt="">
+          <img id="exp-hashira" class="exportLayer" alt="">
+          <img id="exp-door" class="exportLayer" alt="">
+        </div>
+      </div>
+    </div>
+
+    <div class="exportDetailSection">
+      <div class="exportSection">
+        <h3>選択仕様</h3>
+        <div class="exportLine">上台戸板：<span id="exp-sel-door"></span></div>
+        <div class="exportLine">背板中央：<span id="exp-sel-center"></span></div>
+        <div class="exportLine">背板柱：<span id="exp-sel-hashira"></span></div>
+        <div class="exportLine">背板全面：<span id="exp-sel-back"></span></div>
+        <div class="exportLine">下台戸板：<span id="exp-sel-unit"></span></div>
+      </div>
+
+      <div class="exportSection">
+        <h3>概算見積</h3>
+        <div class="exportPriceBox">
+          <div class="exportPriceRow"><div>本体価格</div><div id="exp-price-base">¥0</div></div>
+          <div class="exportPriceRow"><div>加算合計</div><div id="exp-price-add">¥0</div></div>
+          <div class="exportPriceRow"><div>合計</div><div id="exp-price-total">¥0</div></div>
+          <div id="exp-price-note" class="exportPriceNote">すべて税別価格です。</div>
+          <div id="exp-price-breakdown" class="exportPriceBreakdown">加算パーツはありません。</div>
         </div>
       </div>
 
-      <div class="bottomActions">
-        <button id="pdfBtn" class="pdfBtn">PDF出力</button>
-      </div>
-    </div>
-
-  </aside>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<div id="exportSheet" class="exportSheet">
-  <div id="exportTitle" class="exportTitle"></div>
-  <div id="exportMeta" class="exportMeta"></div>
-
-  <div class="exportImageSection">
-    <div class="exportImageWrap">
-      <div class="exportStage">
-        <img id="exp-base" class="exportLayer">
-        <img id="exp-unit" class="exportLayer">
-        <img id="exp-back" class="exportLayer">
-        <img id="exp-center" class="exportLayer">
-        <img id="exp-hashira" class="exportLayer">
-        <img id="exp-door" class="exportLayer">
+      <div class="exportSection">
+        <h3>備考</h3>
+        <div id="exp-memo" class="exportMemo"></div>
       </div>
     </div>
   </div>
 
-  <div class="exportDetailSection">
-    <div class="exportSection">
-      <h3>選択仕様</h3>
-      <div class="exportLine">上台戸板：<span id="exp-sel-door"></span></div>
-      <div class="exportLine">背板中央：<span id="exp-sel-center"></span></div>
-      <div class="exportLine">背板柱：<span id="exp-sel-hashira"></span></div>
-      <div class="exportLine">背板全面：<span id="exp-sel-back"></span></div>
-      <div class="exportLine">下台戸板：<span id="exp-sel-unit"></span></div>
-    </div>
-
-    <div class="exportSection">
-      <h3>概算見積</h3>
-      <div class="exportPriceBox">
-        <div class="exportPriceRow"><div>本体価格</div><div id="exp-price-base">¥0</div></div>
-        <div class="exportPriceRow"><div>加算合計</div><div id="exp-price-add">¥0</div></div>
-        <div class="exportPriceRow"><div>合計</div><div id="exp-price-total">¥0</div></div>
-        <div style="margin-top:6px;font-size:11px;color:#666;" id="exp-price-note">すべて税別価格です。</div>
-        <div class="exportPriceBreakdown" id="exp-price-breakdown">加算パーツはありません。</div>
-      </div>
-    </div>
-
-    <div class="exportSection">
-      <h3>備考</h3>
-      <div id="exp-memo" class="exportMemo"></div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
-<script>
-const PASSWORD = "3003";
-const AUTH_KEY = "senbondo_estimate_auth";
-const BASE_FILE = "base/base.png";
-const BASE_PRICE = 899800;
-
-const PARTS = [
-  {
-    key:"door", jp:"上台戸板", layerId:"layer-door", selId:"sel-door",
-    options:[
-      {id:"normal",label:"通常",file:"door/door_normal.png"},
-      {id:"kokutan2",label:"黒丹調2枚内側",file:"door/door_kokutan2.png"},
-      {id:"kokutan4",label:"黒丹調4枚",file:"door/door_kokutan4.png"},
-      {id:"shitan2",label:"紫丹調2枚内側",file:"door/door_shitan2.png"},
-      {id:"shitan4",label:"紫丹調4枚",file:"door/door_shitan4.png"},
-      {id:"oborozakura",label:"おぼろ桜",file:"door/door_oborozakura.png"},
-      {id:"uzunomichi",label:"渦の道",file:"door/door_uzunomichi.png"},
-      {id:"w",label:"ウォールナット",file:"door/door_w.png"},
-      {id:"w2",label:"ウォールナット2枚外側",file:"door/door_w2.png"},
-      {id:"yaraido4",label:"矢来堂4枚",file:"door/door_yaraido4.png"},
-      {id:"yaraido2",label:"矢来堂2枚内側",file:"door/door_yaraido2.png"},
-      {id:"yaraido_w",label:"矢来堂2枚内側ウォールナット2枚外側",file:"door/door_yaraido_w.png"},
-    ],
-    defaultId:"normal"
-  },
-  {
-    key:"center", jp:"背板中央", layerId:"layer-center", selId:"sel-center",
-    options:[
-      {id:"normal",label:"未選択",file:"center/center_normal.png"},
-      {id:"luminous",label:"ルミナス",file:"center/center_luminous.png"},
-      {id:"kokutan",label:"黒丹調",file:"center/center_kokutan.png"},
-      {id:"shitan",label:"紫丹調",file:"center/center_shitan.png"},
-      {id:"kinshi",label:"金紙",file:"center/center_kinshi.png"},
-      {id:"donsu",label:"緞子",file:"center/center_donsu.png"},
-      {id:"w",label:"ウォールナット",file:"center/center_w.png"},
-      {id:"uzunomichi",label:"渦の道",file:"center/center_uzunomichi.png"},
-      {id:"oborozakura",label:"おぼろ桜",file:"center/center_oborozakura.png"},
-      {id:"sakuranamiki-kokutan",label:"桜並木（黒丹）",file:"center/center_sakuranamiki-kokutan.png"},
-      {id:"sakuranamiki-shitan",label:"桜並木（紫丹）",file:"center/center_sakuranamiki-shitan.png"},
-      {id:"sakuranamiki-w",label:"桜並木（ウォールナット）",file:"center/center_sakuranamiki-w.png"},
-      {id:"towazakura-kokutan",label:"永遠桜（黒丹）",file:"center/center_towazakura-kokutan.png"},
-      {id:"towazakura-shitan",label:"永遠桜（紫丹）",file:"center/center_towazakura-shitan.png"},
-      {id:"towazakura-w",label:"永遠桜（ウォールナット）",file:"center/center_towazakura-w.png"},
-    ],
-    defaultId:"normal"
-  },
-  {
-    key:"hashira", jp:"柱(背板中央未選択の場合のみ選択可能)", layerId:"layer-hashira", selId:"sel-hashira",
-    options:[
-      {id:"on",label:"ON",file:"hashira/hashira_on.png"},
-      {id:"off",label:"OFF",file:"hashira/hashira_off.png"},
-    ],
-    defaultId:"on"
-  },
-  {
-    key:"back", jp:"背板全面", layerId:"layer-back", selId:"sel-back",
-    options:[
-      {id:"normal",label:"通常",file:"back/back_normal.png"},
-      {id:"luminous",label:"ルミナス",file:"back/back_luminous.png"},
-      {id:"iris",label:"アイリス",file:"back/back_iris.png"},
-      {id:"kinshi",label:"金紙",file:"back/back_kinshi.png"},
-      {id:"lily",label:"リリー",file:"back/back_lily.png"},
-      {id:"w",label:"ウォールナット",file:"back/back_w.png"},
-      {id:"uzunomichi",label:"渦の道",file:"back/back_uzunomichi.png"},
-    ],
-    defaultId:"normal"
-  },
-  {
-    key:"unit", jp:"下台戸板", layerId:"layer-unit", selId:"sel-unit",
-    options:[
-      {id:"normal",label:"通常",file:"unit/unit_normal.png"},
-      {id:"senbondo2",label:"千本格子2枚内側",file:"unit/unit_senbondo2.png"},
-      {id:"senbondo_zenmen",label:"千本格子全面",file:"unit/unit_senbondo_zenmen.png"},
-      {id:"yaraido2",label:"矢来堂2枚内側",file:"unit/unit_yaraido2.png"},
-      {id:"yaraidozenmen",label:"矢来堂全面",file:"unit/unit_yaraidozenmen.png"},
-    ],
-    defaultId:"normal"
-  },
-];
-
-const state = {
-  door:null,
-  center:null,
-  hashira:null,
-  back:null,
-  unit:null
-};
-
-const YARAIDO_DOOR_IDS = new Set(["yaraido2", "yaraido4", "yaraido_w"]);
-const YARAIDO_UNIT_IDS = new Set(["yaraido2", "yaraidozenmen"]);
-
-const PRICE_MAP = {
-  door: {
-    oborozakura: 6000,
-    uzunomichi: 36000,
-  },
-  center: {
-    luminous: 2250,
-    kinshi: 1500,
-    w: 1500,
-    uzunomichi: 4500,
-    oborozakura: 4500,
-    "sakuranamiki-kokutan": 19500,
-    "sakuranamiki-shitan": 19500,
-    "sakuranamiki-w": 19500,
-    "towazakura-kokutan": 19500,
-    "towazakura-shitan": 19500,
-    "towazakura-w": 19500
-  },
-  back: {
-    iris: 1500,
-    lily: 6000,
-    uzunomichi: 6000
-  },
-  unit: {
-    senbondo_zenmen: 9000
-    yaraido_zenmen:0
-  }
-};
-
-const INQUIRY_OPTIONS = {
-  unit: new Set(["senbondo_zenmen", "yaraidozenmen"])
-};
-
-function $(id){
-  return document.getElementById(id);
-}
-
-function toast(msg){
-  const t = $("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => t.classList.remove("show"), 1300);
-}
-
-function setImg(id, src){
-  const bust = "v=" + Date.now();
-  $(id).src = src + (src.includes("?") ? "&" + bust : "?" + bust);
-}
-
-function setSelText(selId, label){
-  $(selId).textContent = label;
-}
-
-function setActive(partKey, optId){
-  const wrap = document.querySelector(`[data-part="${partKey}"]`);
-  if(!wrap) return;
-  wrap.querySelectorAll("button.opt").forEach(btn => {
-    btn.setAttribute("aria-pressed", btn.dataset.opt === optId ? "true" : "false");
-  });
-}
-
-function getPart(partKey){
-  return PARTS.find(p => p.key === partKey);
-}
-
-function getOpt(partKey, optId){
-  const p = getPart(partKey);
-  return p ? p.options.find(o => o.id === optId) : null;
-}
-
-function formatYen(value){
-  return "¥" + value.toLocaleString("ja-JP");
-}
-
-function isRestrictedDoorSelected(){
-  return YARAIDO_DOOR_IDS.has(state.door);
-}
-
-function normalizeState(){
-  if(state.center && state.center !== "normal"){
-    state.hashira = "on";
-  }
-
-  if(isRestrictedDoorSelected() && !YARAIDO_UNIT_IDS.has(state.unit)){
-    state.unit = "yaraido2";
-  }
-}
-
-function updateAvailability(){
-  const mustHashiraOn = state.center && state.center !== "normal";
-
-  const hashWrap = document.querySelector(`[data-part="hashira"]`);
-  if(hashWrap){
-    const offBtn = hashWrap.querySelector(`button.opt[data-opt="off"]`);
-    if(offBtn){
-      offBtn.disabled = mustHashiraOn;
-      offBtn.title = mustHashiraOn ? "背板中央が未選択以外のときは柱OFFにできません" : "";
-    }
-  }
-
-  const unitWrap = document.querySelector(`[data-part="unit"]`);
-  if(unitWrap){
-    const restrictUnit = isRestrictedDoorSelected();
-
-    unitWrap.querySelectorAll("button.opt").forEach(btn => {
-      const isAllowed = !restrictUnit || YARAIDO_UNIT_IDS.has(btn.dataset.opt);
-      btn.disabled = !isAllowed;
-      btn.title = !isAllowed ? "この上台戸板では選択できません" : "";
-    });
-  }
-}
-
-function calcEstimate(){
-  let add = 0;
-  let inquiry = false;
-  const breakdown = [];
-
-  Object.keys(state).forEach(partKey => {
-    const optId = state[partKey];
-    if(!optId || optId === "normal" || optId === "on" || optId === "off") return;
-
-    if(INQUIRY_OPTIONS[partKey] && INQUIRY_OPTIONS[partKey].has(optId)){
-      inquiry = true;
-      return;
-    }
-
-    const price = (PRICE_MAP[partKey] && PRICE_MAP[partKey][optId]) ? PRICE_MAP[partKey][optId] : 0;
-    if(price <= 0) return;
-
-    const part = getPart(partKey);
-    const opt = getOpt(partKey, optId);
-
-    breakdown.push({
-      part: part.jp,
-      option: opt.label,
-      price
-    });
-
-    add += price;
-  });
-
-  return {
-    base: BASE_PRICE,
-    add,
-    total: BASE_PRICE + add,
-    inquiry,
-    breakdown
-  };
-}
-
-function updateEstimate(){
-  const est = calcEstimate();
-
-  $("price-base").textContent = formatYen(est.base);
-  $("price-add").textContent = formatYen(est.add);
-
-  if(est.inquiry){
-    $("price-total").textContent = "お問い合わせください";
-    $("price-note").textContent = "※すべて税別価格です。";
-    $("price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
-    return;
-  }
-
-  $("price-total").textContent = formatYen(est.total);
-  $("price-note").textContent = "※すべて税別価格です。";
-
-  if(est.breakdown.length === 0){
-    $("price-breakdown").textContent = "加算パーツはありません。";
-  }else{
-    $("price-breakdown").textContent = est.breakdown
-      .map(item => `${item.part}：${item.option}　${formatYen(item.price)}`)
-      .join("\n");
-  }
-}
-
-function syncUIFromState(){
-  normalizeState();
-
-  PARTS.forEach(part => {
-    const opt = getOpt(part.key, state[part.key]);
-    if(!opt) return;
-    setImg(part.layerId, opt.file);
-    setSelText(part.selId, opt.label);
-    setActive(part.key, opt.id);
-  });
-
-  updateAvailability();
-  updateEstimate();
-}
-
-function apply(partKey, optId, silent = false){
-  const part = getPart(partKey);
-  const opt = getOpt(partKey, optId);
-  if(!part || !opt) return;
-
-  const prevUnit = state.unit;
-  state[partKey] = optId;
-
-  normalizeState();
-  syncUIFromState();
-
-  if(!silent){
-    let msg = `${part.jp}：${opt.label}`;
-
-    if(partKey === "door" && isRestrictedDoorSelected()){
-      if(prevUnit !== state.unit){
-        const unitOpt = getOpt("unit", state.unit);
-        msg += `（下台戸板を${unitOpt.label}に変更）`;
-      }else{
-        msg += "（下台戸板は矢来堂のみ選択可能）";
-      }
-    }
-
-    if(partKey === "center" && state.center !== "normal"){
-      msg += "（柱はON固定）";
-    }
-
-    toast(msg);
-  }
-}
-
-function renderControls(){
-  const root = $("controls");
-  root.innerHTML = "";
-
-  PARTS.forEach(part => {
-    const box = document.createElement("section");
-    box.className = "group";
-
-    const head = document.createElement("div");
-    head.className = "groupTitle";
-    head.innerHTML = `<h3>${part.jp}</h3><div class="note">${part.options.length}項目</div>`;
-    box.appendChild(head);
-
-    const grid = document.createElement("div");
-    grid.className = "btnGrid";
-    grid.dataset.part = part.key;
-
-    part.options.forEach(opt => {
-      const btn = document.createElement("button");
-      btn.className = "opt";
-      btn.type = "button";
-      btn.textContent = opt.label;
-      btn.dataset.opt = opt.id;
-      btn.setAttribute("aria-pressed", "false");
-      btn.addEventListener("click", () => apply(part.key, opt.id));
-      grid.appendChild(btn);
-    });
-
-    box.appendChild(grid);
-    root.appendChild(box);
-  });
-}
-
-function resetAll(){
-  setImg("layer-base", BASE_FILE);
-
-  PARTS.forEach(part => {
-    state[part.key] = part.defaultId;
-  });
-
-  normalizeState();
-  syncUIFromState();
-  toast("初期状態に戻しました");
-}
-
-function fillExportSheet(){
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mi = String(now.getMinutes()).padStart(2, "0");
-  const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
-
-  const staffName = $("staffName").value.trim() || "未入力";
-  const customerName = $("customerName").value.trim() || "未入力";
-  const memo = $("memo").value.trim() || "なし";
-
-  $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様`;
-  $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
-
-  $("exp-base").src = $("layer-base").src;
-  $("exp-unit").src = $("layer-unit").src;
-  $("exp-back").src = $("layer-back").src;
-  $("exp-center").src = $("layer-center").src;
-  $("exp-hashira").src = $("layer-hashira").src;
-  $("exp-door").src = $("layer-door").src;
-
-  $("exp-sel-door").textContent = $("sel-door").textContent;
-  $("exp-sel-center").textContent = $("sel-center").textContent;
-  $("exp-sel-hashira").textContent = $("sel-hashira").textContent === "ON" ? "有り" : "無し";
-  $("exp-sel-back").textContent = $("sel-back").textContent;
-  $("exp-sel-unit").textContent = $("sel-unit").textContent;
-
-  const est = calcEstimate();
-  $("exp-price-base").textContent = formatYen(est.base);
-  $("exp-price-add").textContent = formatYen(est.add);
-
-  if(est.inquiry){
-    $("exp-price-total").textContent = "お問い合わせください";
-    $("exp-price-note").textContent = "すべて税別価格です。";
-    $("exp-price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
-  }else{
-    $("exp-price-total").textContent = formatYen(est.total);
-    $("exp-price-note").textContent = "すべて税別価格です。";
-    $("exp-price-breakdown").textContent =
-      est.breakdown.length === 0
-        ? "加算パーツはありません。"
-        : est.breakdown.map(item => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
-  }
-
-  $("exp-memo").textContent = memo;
-}
-
-async function exportPdf(){
-  try{
-    fillExportSheet();
-
-    const sheet = $("exportSheet");
-    const canvas = await html2canvas(sheet, {
-      backgroundColor:"#ffffff",
-      scale:2,
-      useCORS:true
-    });
-
-    const imgData = canvas.toDataURL("image/jpeg", 0.98);
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF("p", "mm", "a4");
-
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 6;
-    const usableW = pageW - margin * 2;
-    const usableH = pageH - margin * 2;
-
-    pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
-
-    const now = new Date();
-    const fileName =
-      "senbondo_estimate_" +
-      now.getFullYear() +
-      String(now.getMonth() + 1).padStart(2, "0") +
-      String(now.getDate()).padStart(2, "0") + "_" +
-      String(now.getHours()).padStart(2, "0") +
-      String(now.getMinutes()).padStart(2, "0") + ".pdf";
-
-    pdf.save(fileName);
-    toast("PDFを書き出しました");
-  }catch(err){
-    console.error(err);
-    toast("PDF出力に失敗しました");
-  }
-}
-
-/* ===== Password Lock ===== */
-function unlockApp(){
-  $("lockScreen").style.display = "none";
-  $("app").classList.add("show");
-  sessionStorage.setItem(AUTH_KEY, "ok");
-}
-
-function lockApp(){
-  sessionStorage.removeItem(AUTH_KEY);
-  $("app").classList.remove("show");
-  $("lockScreen").style.display = "flex";
-  $("passwordInput").value = "";
-  $("lockError").textContent = "";
-}
-
-function tryUnlock(){
-  const value = $("passwordInput").value.trim();
-  if(value === PASSWORD){
-    unlockApp();
-    toast("ロックを解除しました");
-  }else{
-    $("lockError").textContent = "パスワードが違います。";
-  }
-}
-
-$("unlockBtn").addEventListener("click", tryUnlock);
-$("passwordInput").addEventListener("keydown", (e) => {
-  if(e.key === "Enter"){
-    tryUnlock();
-  }
-});
-
-$("lockBackBtn").addEventListener("click", () => {
-  if(confirm("画面を施錠しますか？")){
-    lockApp();
-  }
-});
-
-$("resetBtn").addEventListener("click", () => {
-  if(confirm("カスタマイズを初期状態に戻しますか？")){
-    resetAll();
-  }
-});
-
-$("pdfBtn").addEventListener("click", exportPdf);
-
-renderControls();
-resetAll();
-
-if(sessionStorage.getItem(AUTH_KEY) === "ok"){
-  unlockApp();
-}
-</script>
-
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
