@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const PASSWORD = "3003";
   const AUTH_KEY = "senbondo_estimate_auth";
   const BASE_FILE = "base/base.png";
-  const BASE_PRICE = 244,000;
+  const BASE_PRICE = 244000;
 
   const PARTS = [
     {
