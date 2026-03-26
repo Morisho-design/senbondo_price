@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>千本堂カスタマイズ</title>
+<title>千本堂カスタマイズ（見積機能付き）</title>
 
 <style>
 :root{
@@ -17,6 +17,7 @@
   --btnText:#111827;
   --btnActive:#2563eb;
   --btnActiveText:#ffffff;
+  --danger:#dc2626;
   --radius:18px;
   --shadow:0 10px 30px rgba(0,0,0,.08);
 }
@@ -30,17 +31,89 @@ body{
   color:var(--text);
 }
 
-/* ===== Layout ===== */
+/* ===== Lock Screen ===== */
+.lockScreen{
+  position:fixed;
+  inset:0;
+  background:linear-gradient(180deg,#f9fafb 0%,#eef2f7 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  z-index:9999;
+}
+.lockCard{
+  width:min(420px,100%);
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:22px;
+  box-shadow:var(--shadow);
+  padding:24px;
+}
+.lockCard h1{
+  margin:0 0 8px 0;
+  font-size:22px;
+}
+.lockCard p{
+  margin:0 0 16px 0;
+  color:var(--muted);
+  line-height:1.6;
+  font-size:14px;
+}
+.lockField{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.lockField input{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  font:inherit;
+}
+.lockActions{
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+}
+.lockBtn{
+  border:none;
+  border-radius:14px;
+  padding:12px 16px;
+  font:inherit;
+  cursor:pointer;
+}
+.lockBtn.primary{
+  background:#111827;
+  color:#fff;
+  flex:1;
+}
+.lockBtn.secondary{
+  background:#f3f4f6;
+  color:#111827;
+}
+.lockError{
+  margin-top:10px;
+  color:var(--danger);
+  font-size:13px;
+  min-height:1.2em;
+}
+
+/* ===== App ===== */
 .app{
-  display:grid;
+  display:none;
   grid-template-columns:1fr 1fr;
   gap:16px;
   padding:16px;
   min-height:100vh;
 }
+.app.show{
+  display:grid;
+}
 
 @media (max-width:980px){
-  .app{
+  .app.show{
     grid-template-columns:1fr;
     grid-template-rows:auto auto;
   }
@@ -79,7 +152,6 @@ body{
   max-height:calc(100vh - 60px);
   background:#fff;
 }
-
 .layer{
   position:absolute;
   inset:0;
@@ -112,7 +184,8 @@ body{
   flex-wrap:wrap;
 }
 
-.resetBtn{
+.resetBtn,
+.lockBackBtn{
   border:1px solid var(--border);
   background:#f9fafb;
   border-radius:10px;
@@ -123,7 +196,8 @@ body{
   width:auto;
   color:#6b7280;
 }
-.resetBtn:hover{
+.resetBtn:hover,
+.lockBackBtn:hover{
   background:#f3f4f6;
 }
 
@@ -190,7 +264,8 @@ button.opt:disabled{
 }
 
 .current,
-.memoBox{
+.memoBox,
+.priceBox{
   background:#fff;
   border:1px solid var(--border);
   border-radius:14px;
@@ -198,12 +273,15 @@ button.opt:disabled{
   margin-top:12px;
 }
 .current h4,
-.memoBox h4{
+.memoBox h4,
+.priceBox h4{
   margin:0 0 8px 0;
   font-size:13px;
   color:var(--muted);
 }
-.row{
+
+.row,
+.priceRow{
   display:flex;
   justify-content:space-between;
   gap:10px;
@@ -211,14 +289,39 @@ button.opt:disabled{
   border-top:1px dashed var(--border);
   font-size:13px;
 }
-.row:first-of-type{
+.row:first-of-type,
+.priceRow:first-of-type{
   border-top:none;
 }
-.k{
+
+.k,
+.priceLabel{
   color:var(--muted);
 }
-.v{
+.v,
+.priceValue{
   font-weight:700;
+}
+.priceTotal{
+  font-size:18px;
+  font-weight:800;
+}
+.priceNote{
+  margin-top:8px;
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.5;
+}
+.priceBreakdown{
+  margin-top:8px;
+  white-space:pre-wrap;
+  line-height:1.6;
+  font-size:12px;
+  color:#374151;
+  background:#f9fafb;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
 }
 
 textarea,
@@ -252,17 +355,14 @@ textarea{
   align-items:center;
   gap:8px;
 }
-
 .inputSuffixWrap input{
   flex:1;
 }
-
 .inputSuffix{
   color:var(--muted);
   font-size:14px;
   white-space:nowrap;
 }
-
 .bottomActions{
   margin-top:12px;
 }
@@ -293,7 +393,7 @@ textarea{
   height:1123px;
   background:#fff;
   color:#111;
-  padding:24px;
+  padding:22px;
   font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;
   overflow:hidden;
 }
@@ -304,21 +404,19 @@ textarea{
   line-height:1.35;
   margin-bottom:4px;
 }
-
 .exportMeta{
   font-size:12px;
   color:#666;
-  margin-bottom:12px;
+  margin-bottom:10px;
 }
 
 .exportImageSection{
-  height:510px;
+  height:430px;
   display:flex;
   align-items:center;
   justify-content:center;
-  margin-bottom:14px;
+  margin-bottom:12px;
 }
-
 .exportImageWrap{
   width:100%;
   height:100%;
@@ -330,15 +428,13 @@ textarea{
   align-items:center;
   justify-content:center;
 }
-
 .exportStage{
   position:relative;
   width:100%;
-  max-width:490px;
+  max-width:430px;
   aspect-ratio:1 / 1;
   background:#fff;
 }
-
 .exportLayer{
   position:absolute;
   inset:0;
@@ -349,41 +445,62 @@ textarea{
 }
 
 .exportDetailSection{
-  height:540px;
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:10px;
 }
-
 .exportSection h3{
-  font-size:15px;
-  margin:0 0 8px 0;
+  font-size:14px;
+  margin:0 0 6px 0;
 }
-
 .exportLine{
-  padding:7px 0;
+  padding:6px 0;
   border-top:1px solid #eee;
-  font-size:13px;
+  font-size:12px;
   line-height:1.5;
 }
-
 .exportLine:first-of-type{
   border-top:none;
 }
-
 .exportLine span{
   font-weight:700;
 }
 
+.exportPriceBox{
+  border:1px solid #eee;
+  border-radius:12px;
+  padding:10px;
+}
+.exportPriceRow{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:5px 0;
+  border-top:1px dashed #eee;
+  font-size:12px;
+}
+.exportPriceRow:first-of-type{
+  border-top:none;
+}
+.exportPriceBreakdown{
+  margin-top:8px;
+  white-space:pre-wrap;
+  line-height:1.5;
+  font-size:11px;
+  background:#fafafa;
+  border:1px solid #eee;
+  border-radius:10px;
+  padding:8px 10px;
+}
 .exportMemo{
   white-space:pre-wrap;
   line-height:1.5;
-  font-size:13px;
+  font-size:12px;
   border:1px solid #eee;
   border-radius:12px;
-  padding:12px;
-  min-height:180px;
-  max-height:300px;
+  padding:10px;
+  min-height:120px;
+  max-height:180px;
   overflow:hidden;
 }
 </style>
@@ -391,7 +508,24 @@ textarea{
 
 <body>
 
-<div class="app">
+<div id="lockScreen" class="lockScreen">
+  <div class="lockCard">
+    <h1>見積機能付き版</h1>
+    <p>このページはパスワード保護されています。<br>閲覧するにはパスワードを入力してください。</p>
+
+    <div class="lockField">
+      <input id="passwordInput" type="password" inputmode="numeric" placeholder="パスワードを入力">
+    </div>
+
+    <div class="lockActions">
+      <button id="unlockBtn" class="lockBtn primary">入室</button>
+    </div>
+
+    <div id="lockError" class="lockError"></div>
+  </div>
+</div>
+
+<div id="app" class="app">
 
   <section class="viewerCard">
     <div class="stage" id="stage">
@@ -407,9 +541,10 @@ textarea{
   <aside class="menuCard">
 
     <div class="header">
-      <h1>千本堂 カスタマイズ</h1>
+      <h1>千本堂 カスタマイズ（見積機能付き）</h1>
       <div class="headerBtns">
         <button id="resetBtn" class="resetBtn">初期状態に戻す</button>
+        <button id="lockBackBtn" class="lockBackBtn">施錠</button>
       </div>
     </div>
 
@@ -422,6 +557,15 @@ textarea{
       <div class="row"><div class="k">柱</div><div class="v" id="sel-hashira">ON</div></div>
       <div class="row"><div class="k">背板全面</div><div class="v" id="sel-back">通常</div></div>
       <div class="row"><div class="k">下台戸板</div><div class="v" id="sel-unit">通常</div></div>
+    </div>
+
+    <div class="priceBox">
+      <h4>概算見積</h4>
+      <div class="priceRow"><div class="priceLabel">本体価格</div><div class="priceValue" id="price-base">¥0</div></div>
+      <div class="priceRow"><div class="priceLabel">加算合計</div><div class="priceValue" id="price-add">¥0</div></div>
+      <div class="priceRow"><div class="priceLabel">合計</div><div class="priceValue priceTotal" id="price-total">¥0</div></div>
+      <div class="priceNote" id="price-note">※すべて税別価格です。</div>
+      <div class="priceBreakdown" id="price-breakdown">加算パーツはありません。</div>
     </div>
 
     <div class="memoBox">
@@ -449,7 +593,6 @@ textarea{
     </div>
 
   </aside>
-
 </div>
 
 <div class="toast" id="toast"></div>
@@ -482,6 +625,17 @@ textarea{
     </div>
 
     <div class="exportSection">
+      <h3>概算見積</h3>
+      <div class="exportPriceBox">
+        <div class="exportPriceRow"><div>本体価格</div><div id="exp-price-base">¥0</div></div>
+        <div class="exportPriceRow"><div>加算合計</div><div id="exp-price-add">¥0</div></div>
+        <div class="exportPriceRow"><div>合計</div><div id="exp-price-total">¥0</div></div>
+        <div style="margin-top:6px;font-size:11px;color:#666;" id="exp-price-note">すべて税別価格です。</div>
+        <div class="exportPriceBreakdown" id="exp-price-breakdown">加算パーツはありません。</div>
+      </div>
+    </div>
+
+    <div class="exportSection">
       <h3>備考</h3>
       <div id="exp-memo" class="exportMemo"></div>
     </div>
@@ -492,7 +646,10 @@ textarea{
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <script>
+const PASSWORD = "3003";
+const AUTH_KEY = "senbondo_estimate_auth";
 const BASE_FILE = "base/base.png";
+const BASE_PRICE = 899800;
 
 const PARTS = [
   {
@@ -579,6 +736,39 @@ const state = {
 const YARAIDO_DOOR_IDS = new Set(["yaraido2", "yaraido4", "yaraido_w"]);
 const YARAIDO_UNIT_IDS = new Set(["yaraido2", "yaraidozenmen"]);
 
+const PRICE_MAP = {
+  door: {
+    oborozakura: 6000,
+    uzunomichi: 36000,
+  },
+  center: {
+    luminous: 2250,
+    kinshi: 1500,
+    w: 1500,
+    uzunomichi: 4500,
+    oborozakura: 4500,
+    "sakuranamiki-kokutan": 19500,
+    "sakuranamiki-shitan": 19500,
+    "sakuranamiki-w": 19500,
+    "towazakura-kokutan": 19500,
+    "towazakura-shitan": 19500,
+    "towazakura-w": 19500
+  },
+  back: {
+    iris: 1500,
+    lily: 6000,
+    uzunomichi: 6000
+  },
+  unit: {
+    senbondo_zenmen: 9000
+    yaraido_zenmen:0
+  }
+};
+
+const INQUIRY_OPTIONS = {
+  unit: new Set(["senbondo_zenmen", "yaraidozenmen"])
+};
+
 function $(id){
   return document.getElementById(id);
 }
@@ -603,7 +793,6 @@ function setSelText(selId, label){
 function setActive(partKey, optId){
   const wrap = document.querySelector(`[data-part="${partKey}"]`);
   if(!wrap) return;
-
   wrap.querySelectorAll("button.opt").forEach(btn => {
     btn.setAttribute("aria-pressed", btn.dataset.opt === optId ? "true" : "false");
   });
@@ -616,6 +805,10 @@ function getPart(partKey){
 function getOpt(partKey, optId){
   const p = getPart(partKey);
   return p ? p.options.find(o => o.id === optId) : null;
+}
+
+function formatYen(value){
+  return "¥" + value.toLocaleString("ja-JP");
 }
 
 function isRestrictedDoorSelected(){
@@ -633,8 +826,7 @@ function normalizeState(){
 }
 
 function updateAvailability(){
-  const centerId = state.center;
-  const mustHashiraOn = (centerId && centerId !== "normal");
+  const mustHashiraOn = state.center && state.center !== "normal";
 
   const hashWrap = document.querySelector(`[data-part="hashira"]`);
   if(hashWrap){
@@ -657,6 +849,69 @@ function updateAvailability(){
   }
 }
 
+function calcEstimate(){
+  let add = 0;
+  let inquiry = false;
+  const breakdown = [];
+
+  Object.keys(state).forEach(partKey => {
+    const optId = state[partKey];
+    if(!optId || optId === "normal" || optId === "on" || optId === "off") return;
+
+    if(INQUIRY_OPTIONS[partKey] && INQUIRY_OPTIONS[partKey].has(optId)){
+      inquiry = true;
+      return;
+    }
+
+    const price = (PRICE_MAP[partKey] && PRICE_MAP[partKey][optId]) ? PRICE_MAP[partKey][optId] : 0;
+    if(price <= 0) return;
+
+    const part = getPart(partKey);
+    const opt = getOpt(partKey, optId);
+
+    breakdown.push({
+      part: part.jp,
+      option: opt.label,
+      price
+    });
+
+    add += price;
+  });
+
+  return {
+    base: BASE_PRICE,
+    add,
+    total: BASE_PRICE + add,
+    inquiry,
+    breakdown
+  };
+}
+
+function updateEstimate(){
+  const est = calcEstimate();
+
+  $("price-base").textContent = formatYen(est.base);
+  $("price-add").textContent = formatYen(est.add);
+
+  if(est.inquiry){
+    $("price-total").textContent = "お問い合わせください";
+    $("price-note").textContent = "※すべて税別価格です。";
+    $("price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
+    return;
+  }
+
+  $("price-total").textContent = formatYen(est.total);
+  $("price-note").textContent = "※すべて税別価格です。";
+
+  if(est.breakdown.length === 0){
+    $("price-breakdown").textContent = "加算パーツはありません。";
+  }else{
+    $("price-breakdown").textContent = est.breakdown
+      .map(item => `${item.part}：${item.option}　${formatYen(item.price)}`)
+      .join("\n");
+  }
+}
+
 function syncUIFromState(){
   normalizeState();
 
@@ -669,6 +924,7 @@ function syncUIFromState(){
   });
 
   updateAvailability();
+  updateEstimate();
 }
 
 function apply(partKey, optId, silent = false){
@@ -677,8 +933,8 @@ function apply(partKey, optId, silent = false){
   if(!part || !opt) return;
 
   const prevUnit = state.unit;
-
   state[partKey] = optId;
+
   normalizeState();
   syncUIFromState();
 
@@ -744,7 +1000,6 @@ function resetAll(){
 
   normalizeState();
   syncUIFromState();
-
   toast("初期状態に戻しました");
 }
 
@@ -776,6 +1031,24 @@ function fillExportSheet(){
   $("exp-sel-hashira").textContent = $("sel-hashira").textContent === "ON" ? "有り" : "無し";
   $("exp-sel-back").textContent = $("sel-back").textContent;
   $("exp-sel-unit").textContent = $("sel-unit").textContent;
+
+  const est = calcEstimate();
+  $("exp-price-base").textContent = formatYen(est.base);
+  $("exp-price-add").textContent = formatYen(est.add);
+
+  if(est.inquiry){
+    $("exp-price-total").textContent = "お問い合わせください";
+    $("exp-price-note").textContent = "すべて税別価格です。";
+    $("exp-price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
+  }else{
+    $("exp-price-total").textContent = formatYen(est.total);
+    $("exp-price-note").textContent = "すべて税別価格です。";
+    $("exp-price-breakdown").textContent =
+      est.breakdown.length === 0
+        ? "加算パーツはありません。"
+        : est.breakdown.map(item => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
+  }
+
   $("exp-memo").textContent = memo;
 }
 
@@ -791,7 +1064,6 @@ async function exportPdf(){
     });
 
     const imgData = canvas.toDataURL("image/jpeg", 0.98);
-
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF("p", "mm", "a4");
 
@@ -805,7 +1077,7 @@ async function exportPdf(){
 
     const now = new Date();
     const fileName =
-      "senbondo_" +
+      "senbondo_estimate_" +
       now.getFullYear() +
       String(now.getMonth() + 1).padStart(2, "0") +
       String(now.getDate()).padStart(2, "0") + "_" +
@@ -820,6 +1092,44 @@ async function exportPdf(){
   }
 }
 
+/* ===== Password Lock ===== */
+function unlockApp(){
+  $("lockScreen").style.display = "none";
+  $("app").classList.add("show");
+  sessionStorage.setItem(AUTH_KEY, "ok");
+}
+
+function lockApp(){
+  sessionStorage.removeItem(AUTH_KEY);
+  $("app").classList.remove("show");
+  $("lockScreen").style.display = "flex";
+  $("passwordInput").value = "";
+  $("lockError").textContent = "";
+}
+
+function tryUnlock(){
+  const value = $("passwordInput").value.trim();
+  if(value === PASSWORD){
+    unlockApp();
+    toast("ロックを解除しました");
+  }else{
+    $("lockError").textContent = "パスワードが違います。";
+  }
+}
+
+$("unlockBtn").addEventListener("click", tryUnlock);
+$("passwordInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    tryUnlock();
+  }
+});
+
+$("lockBackBtn").addEventListener("click", () => {
+  if(confirm("画面を施錠しますか？")){
+    lockApp();
+  }
+});
+
 $("resetBtn").addEventListener("click", () => {
   if(confirm("カスタマイズを初期状態に戻しますか？")){
     resetAll();
@@ -830,6 +1140,10 @@ $("pdfBtn").addEventListener("click", exportPdf);
 
 renderControls();
 resetAll();
+
+if(sessionStorage.getItem(AUTH_KEY) === "ok"){
+  unlockApp();
+}
 </script>
 
 </body>
