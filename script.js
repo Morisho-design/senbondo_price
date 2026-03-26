@@ -276,13 +276,6 @@ const PRICE_MAP = {
     if ($("price-base")) $("price-base").textContent = formatYen(est.base);
     if ($("price-add")) $("price-add").textContent = formatYen(est.add);
 
-    if (est.inquiry) {
-      if ($("price-total")) $("price-total").textContent = "お問い合わせください";
-      if ($("price-note")) $("price-note").textContent = "※すべて税別価格です。";
-      if ($("price-breakdown")) $("price-breakdown").textContent = "特殊パーツが含まれるため、お問い合わせください。";
-      return;
-    }
-
     if ($("price-total")) $("price-total").textContent = formatYen(est.total);
     if ($("price-note")) $("price-note").textContent = "※すべて税別価格です。";
 
