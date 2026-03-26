@@ -498,3 +498,46 @@ textarea{
   max-height:180px;
   overflow:hidden;
 }
+.priceBreakdown{
+  margin-top:8px;
+  white-space:pre-wrap;
+  line-height:1.6;
+  font-size:12px;
+  color:#374151;
+  background:#f9fafb;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+}
+
+.exportPriceBox{
+  border:1px solid #eee;
+  border-radius:12px;
+  padding:10px;
+}
+.exportPriceRow{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:5px 0;
+  border-top:1px dashed #eee;
+  font-size:12px;
+}
+.exportPriceRow:first-of-type{
+  border-top:none;
+}
+.exportPriceNote{
+  margin-top:6px;
+  font-size:11px;
+  color:#666;
+}
+.exportPriceBreakdown{
+  margin-top:8px;
+  white-space:pre-wrap;
+  line-height:1.5;
+  font-size:11px;
+  background:#fafafa;
+  border:1px solid #eee;
+  border-radius:10px;
+  padding:8px 10px;
+}
