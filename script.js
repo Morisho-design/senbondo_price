@@ -459,7 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
       pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
 
 const customerName = $("customerName")?.value.trim();
-const baseName = customerName ? `${customerName}様` : "senbondo";
+const baseName = customerName ? `${customerName}様御見積書` : "senbondo";
 
 const safeName = baseName
   .replace(/[\\/:*?"<>|]/g, "_")
