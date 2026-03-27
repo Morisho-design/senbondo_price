@@ -2,7 +2,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const PASSWORD = "3003";
   const AUTH_KEY = "senbondo_estimate_auth";
   const BASE_FILE = "base/base.png";
-  const BASE_PRICE = 244000;
 
   const PARTS = [
     {
@@ -450,7 +449,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if ($("exp-sel-unit")) $("exp-sel-unit").textContent = $("sel-unit")?.textContent || "";
     if ($("exp-memo")) $("exp-memo").textContent = memo;
 
-    if ($("exp-price-base")) $("exp-price-base").textContent = $("price-base")?.textContent || "¥0";
     if ($("exp-price-add")) $("exp-price-add").textContent = $("price-add")?.textContent || "¥0";
     if ($("exp-price-total")) $("exp-price-total").textContent = $("price-total")?.textContent || "¥0";
     if ($("exp-price-note")) $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
