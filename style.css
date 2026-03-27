@@ -498,3 +498,9 @@ textarea{
   max-height:180px;
   overflow:hidden;
 }
+
+.twoBtns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
