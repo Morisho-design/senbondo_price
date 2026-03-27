@@ -458,10 +458,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
 
-      const customerName = $("customerName")?.value.trim();
-      const safeName = (customerName || "senbondo")
-        .replace(/[\\/:*?"<>|]/g, "_")
-        .replace(/\s+/g, "_");
+const customerName = $("customerName")?.value.trim();
+const baseName = customerName ? `${customerName}様` : "senbondo";
+
+const safeName = baseName
+  .replace(/[\\/:*?"<>|]/g, "_")
+  .replace(/\s+/g, "_");
+
+pdf.save(`${safeName}.pdf`);
 
       pdf.save(`${safeName}.pdf`);
       toast("PDFを書き出しました");
