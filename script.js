@@ -93,35 +93,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   ];
 
-const PRICE_MAP = {
-  door: {
-    oborozakura: 6000,
-    uzunomichi: 36000,
-  },
-  center: {
-    luminous: 2250,
-    kinshi: 1500,
-    w: 1500,
-    uzunomichi: 4500,
-    oborozakura: 4500,
-    "sakuranamiki-kokutan": 19500,
-    "sakuranamiki-shitan": 19500,
-    "sakuranamiki-w": 19500,
-    "towazakura-kokutan": 19500,
-    "towazakura-shitan": 19500,
-    "towazakura-w": 19500
-  },
-  back: {
-    iris: 1500,
-    lily: 6000,
-    uzunomichi: 6000
-  },
-  unit: {
-    senbondo_zenmen: 9000,
-    yaraidozenmen: 0
-  }
-};
-
+  const PRICE_MAP = {
+    door: {
+      oborozakura: 6000,
+      uzunomichi: 36000,
+    },
+    center: {
+      luminous: 2250,
+      kinshi: 1500,
+      w: 1500,
+      uzunomichi: 4500,
+      oborozakura: 4500,
+      "sakuranamiki-kokutan": 19500,
+      "sakuranamiki-shitan": 19500,
+      "sakuranamiki-w": 19500,
+      "towazakura-kokutan": 19500,
+      "towazakura-shitan": 19500,
+      "towazakura-w": 19500
+    },
+    back: {
+      iris: 1500,
+      lily: 6000,
+      uzunomichi: 6000
+    },
+    unit: {
+      senbondo_zenmen: 9000,
+      yaraidozenmen: 0
+    }
+  };
 
   const INQUIRY_OPTIONS = {
     unit: new Set(["senbondo_zenmen", "yaraidozenmen"])
@@ -378,6 +377,100 @@ const PRICE_MAP = {
     syncUIFromState();
   }
 
+  function fillExportSheet() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mi = String(now.getMinutes()).padStart(2, "0");
+    const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
+
+    const staffName = $("staffName")?.value.trim() || "未入力";
+    const customerName = $("customerName")?.value.trim() || "未入力";
+    const memo = $("memo")?.value.trim() || "なし";
+
+    if ($("exportTitle")) {
+      $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様`;
+    }
+    if ($("exportMeta")) {
+      $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
+    }
+
+    if ($("exp-base")) $("exp-base").src = $("layer-base")?.src || "";
+    if ($("exp-unit")) $("exp-unit").src = $("layer-unit")?.src || "";
+    if ($("exp-back")) $("exp-back").src = $("layer-back")?.src || "";
+    if ($("exp-center")) $("exp-center").src = $("layer-center")?.src || "";
+    if ($("exp-hashira")) $("exp-hashira").src = $("layer-hashira")?.src || "";
+    if ($("exp-door")) $("exp-door").src = $("layer-door")?.src || "";
+
+    if ($("exp-sel-door")) $("exp-sel-door").textContent = $("sel-door")?.textContent || "";
+    if ($("exp-sel-center")) $("exp-sel-center").textContent = $("sel-center")?.textContent || "";
+    if ($("exp-sel-hashira")) {
+      const hashiraText = $("sel-hashira")?.textContent || "";
+      $("exp-sel-hashira").textContent = hashiraText === "ON" ? "有り" : "無し";
+    }
+    if ($("exp-sel-back")) $("exp-sel-back").textContent = $("sel-back")?.textContent || "";
+    if ($("exp-sel-unit")) $("exp-sel-unit").textContent = $("sel-unit")?.textContent || "";
+    if ($("exp-memo")) $("exp-memo").textContent = memo;
+
+    if ($("exp-price-base")) $("exp-price-base").textContent = $("price-base")?.textContent || "¥0";
+    if ($("exp-price-add")) $("exp-price-add").textContent = $("price-add")?.textContent || "¥0";
+    if ($("exp-price-total")) $("exp-price-total").textContent = $("price-total")?.textContent || "¥0";
+    if ($("exp-price-note")) $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
+    if ($("exp-price-breakdown")) $("exp-price-breakdown").textContent = $("price-breakdown")?.textContent || "加算パーツはありません。";
+  }
+
+  async function exportPdf() {
+    try {
+      if (typeof html2canvas === "undefined") {
+        toast("PDFライブラリが読み込めていません");
+        return;
+      }
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        toast("PDFライブラリが読み込めていません");
+        return;
+      }
+
+      fillExportSheet();
+
+      const sheet = $("exportSheet");
+      if (!sheet) {
+        toast("PDF出力エリアが見つかりません");
+        return;
+      }
+
+      const canvas = await html2canvas(sheet, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 6;
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2;
+
+      pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
+
+      const customerName = $("customerName")?.value.trim();
+      const safeName = (customerName || "senbondo")
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .replace(/\s+/g, "_");
+
+      pdf.save(`${safeName}.pdf`);
+      toast("PDFを書き出しました");
+    } catch (err) {
+      console.error(err);
+      toast("PDF出力に失敗しました");
+    }
+  }
+
   function unlockApp() {
     const lockScreen = $("lockScreen");
     const app = $("app");
@@ -418,6 +511,7 @@ const PRICE_MAP = {
   const passwordInput = $("passwordInput");
   const lockBackBtn = $("lockBackBtn");
   const resetBtn = $("resetBtn");
+  const pdfBtn = $("pdfBtn");
 
   if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
   if (passwordInput) {
@@ -436,6 +530,10 @@ const PRICE_MAP = {
     resetBtn.addEventListener("click", () => {
       if (confirm("カスタマイズを初期状態に戻しますか？")) resetAll();
     });
+  }
+
+  if (pdfBtn) {
+    pdfBtn.addEventListener("click", exportPdf);
   }
 
   renderControls();
