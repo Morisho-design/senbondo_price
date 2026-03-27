@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const PRICE_MAP = {
     door: {
       oborozakura: 6000,
-      uzunomichi: 36000,
+      uzunomichi: 36000
     },
     center: {
       luminous: 2250,
@@ -199,6 +199,43 @@ document.addEventListener("DOMContentLoaded", () => {
     return YARAIDO_DOOR_IDS.has(state.door);
   }
 
+  function buildCustomerFileName(ext = "pdf") {
+    const customerName = $("customerName")?.value.trim();
+    const baseName = customerName ? `${customerName}様御見積書` : "senbondo";
+    const safeName = baseName
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/\s+/g, "_");
+    return `${safeName}.${ext}`;
+  }
+
+  async function saveBlobAsFile(blob, filename) {
+    const file = new File([blob], filename, { type: blob.type });
+
+    if (navigator.canShare && navigator.share) {
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: filename
+          });
+          return true;
+        }
+      } catch (err) {
+        console.warn("share failed:", err);
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+
   function normalizeState() {
     if (state.center && state.center !== "normal") {
       state.hashira = "on";
@@ -274,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if ($("price-base")) $("price-base").textContent = formatYen(est.base);
     if ($("price-add")) $("price-add").textContent = formatYen(est.add);
-
     if ($("price-total")) $("price-total").textContent = formatYen(est.total);
     if ($("price-note")) $("price-note").textContent = "※すべて税別価格です。";
 
@@ -458,20 +494,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
       pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
 
-const customerName = $("customerName")?.value.trim();
-const baseName = customerName ? `${customerName}様御見積書` : "senbondo";
-
-const safeName = baseName
-  .replace(/[\\/:*?"<>|]/g, "_")
-  .replace(/\s+/g, "_");
-
-pdf.save(`${safeName}.pdf`);
-
-      pdf.save(`${safeName}.pdf`);
+      const filename = buildCustomerFileName("pdf");
+      pdf.save(filename);
       toast("PDFを書き出しました");
     } catch (err) {
       console.error(err);
       toast("PDF出力に失敗しました");
+    }
+  }
+
+  async function exportImage() {
+    try {
+      if (typeof html2canvas === "undefined") {
+        toast("画像出力ライブラリが読み込めていません");
+        return;
+      }
+
+      fillExportSheet();
+
+      const sheet = $("exportSheet");
+      if (!sheet) {
+        toast("出力エリアが見つかりません");
+        return;
+      }
+
+      const canvas = await html2canvas(sheet, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true
+      });
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", 0.95);
+      });
+
+      if (!blob) {
+        toast("画像出力に失敗しました");
+        return;
+      }
+
+      const filename = buildCustomerFileName("jpg");
+      await saveBlobAsFile(blob, filename);
+      toast("画像を書き出しました");
+    } catch (err) {
+      console.error(err);
+      toast("画像出力に失敗しました");
     }
   }
 
@@ -516,6 +583,7 @@ pdf.save(`${safeName}.pdf`);
   const lockBackBtn = $("lockBackBtn");
   const resetBtn = $("resetBtn");
   const pdfBtn = $("pdfBtn");
+  const imageBtn = $("imageBtn");
 
   if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
   if (passwordInput) {
@@ -538,6 +606,10 @@ pdf.save(`${safeName}.pdf`);
 
   if (pdfBtn) {
     pdfBtn.addEventListener("click", exportPdf);
+  }
+
+  if (imageBtn) {
+    imageBtn.addEventListener("click", exportImage);
   }
 
   renderControls();
