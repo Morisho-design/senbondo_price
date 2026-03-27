@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
         { id: "shitan4", label: "紫丹調4枚", file: "door/door_shitan4.png" },
         { id: "oborozakura", label: "おぼろ桜", file: "door/door_oborozakura.png" },
         { id: "uzunomichi", label: "渦の道", file: "door/door_uzunomichi.png" },
-        { id: "w", label: "ウォールナット", file: "door/door_w.png" },
+        { id: "w", label: "ウォールナット4枚", file: "door/door_w.png" },
         { id: "w2", label: "ウォールナット2枚外側", file: "door/door_w2.png" },
         { id: "yaraido4", label: "矢来堂4枚", file: "door/door_yaraido4.png" },
         { id: "yaraido2", label: "矢来堂2枚内側", file: "door/door_yaraido2.png" },
@@ -85,9 +85,9 @@ document.addEventListener("DOMContentLoaded", () => {
       options: [
         { id: "normal", label: "通常", file: "unit/unit_normal.png" },
         { id: "senbondo2", label: "千本格子2枚内側", file: "unit/unit_senbondo2.png" },
-        { id: "senbondo_zenmen", label: "千本格子全面", file: "unit/unit_senbondo_zenmen.png" },
+        { id: "senbondo_zenmen", label: "千本格子4枚", file: "unit/unit_senbondo_zenmen.png" },
         { id: "yaraido2", label: "矢来堂2枚内側", file: "unit/unit_yaraido2.png" },
-        { id: "yaraidozenmen", label: "矢来堂全面", file: "unit/unit_yaraidozenmen.png" }
+        { id: "yaraidozenmen", label: "矢来堂4枚", file: "unit/unit_yaraidozenmen.png" }
       ],
       defaultId: "normal"
     }
