@@ -199,6 +199,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return YARAIDO_DOOR_IDS.has(state.door);
   }
 
+  function isRestrictedUnitSelected() {
+    return YARAIDO_UNIT_IDS.has(state.unit);
+  }
+
   function buildCustomerFileName(ext = "pdf") {
     const customerName = $("customerName")?.value.trim();
     const baseName = customerName ? `${customerName}様御見積書` : "senbondo";
@@ -240,8 +244,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (state.center && state.center !== "normal") {
       state.hashira = "on";
     }
+
     if (isRestrictedDoorSelected() && !YARAIDO_UNIT_IDS.has(state.unit)) {
       state.unit = "yaraido2";
+    }
+
+    if (isRestrictedUnitSelected() && !YARAIDO_DOOR_IDS.has(state.door)) {
+      state.door = "yaraido2";
     }
   }
 
@@ -260,10 +269,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const unitWrap = document.querySelector(`[data-part="unit"]`);
     if (unitWrap) {
       const restrictUnit = isRestrictedDoorSelected();
+
       unitWrap.querySelectorAll("button.opt").forEach((btn) => {
         const isAllowed = !restrictUnit || YARAIDO_UNIT_IDS.has(btn.dataset.opt);
         btn.disabled = !isAllowed;
         btn.title = !isAllowed ? "この上台戸板では選択できません" : "";
+      });
+    }
+
+    const doorWrap = document.querySelector(`[data-part="door"]`);
+    if (doorWrap) {
+      const restrictDoor = isRestrictedUnitSelected();
+
+      doorWrap.querySelectorAll("button.opt").forEach((btn) => {
+        const isAllowed = !restrictDoor || YARAIDO_DOOR_IDS.has(btn.dataset.opt);
+        btn.disabled = !isAllowed;
+        btn.title = !isAllowed ? "この下台戸板では選択できません" : "";
       });
     }
   }
@@ -343,6 +364,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!part || !opt) return;
 
     const prevUnit = state.unit;
+    const prevDoor = state.door;
+
     state[partKey] = optId;
 
     normalizeState();
@@ -357,6 +380,15 @@ document.addEventListener("DOMContentLoaded", () => {
           msg += `（下台戸板を${unitOpt.label}に変更）`;
         } else {
           msg += "（下台戸板は矢来堂のみ選択可能）";
+        }
+      }
+
+      if (partKey === "unit" && isRestrictedUnitSelected()) {
+        if (prevDoor !== state.door) {
+          const doorOpt = getOpt("door", state.door);
+          msg += `（上台戸板を${doorOpt.label}に変更）`;
+        } else {
+          msg += "（上台戸板は矢来堂のみ選択可能）";
         }
       }
 
