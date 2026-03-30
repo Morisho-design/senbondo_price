@@ -137,6 +137,8 @@ document.addEventListener("DOMContentLoaded", () => {
     unit: null
   };
 
+  let restrictionSource = null; // "door" | "unit" | null
+
   function $(id) {
     return document.getElementById(id);
   }
@@ -245,12 +247,28 @@ document.addEventListener("DOMContentLoaded", () => {
       state.hashira = "on";
     }
 
-    if (isRestrictedDoorSelected() && !YARAIDO_UNIT_IDS.has(state.unit)) {
-      state.unit = "yaraido2";
+    if (restrictionSource === "door") {
+      if (isRestrictedDoorSelected()) {
+        if (!YARAIDO_UNIT_IDS.has(state.unit)) {
+          state.unit = "yaraido2";
+        }
+      } else {
+        if (isRestrictedUnitSelected()) {
+          state.unit = "normal";
+        }
+      }
     }
 
-    if (isRestrictedUnitSelected() && !YARAIDO_DOOR_IDS.has(state.door)) {
-      state.door = "yaraido2";
+    if (restrictionSource === "unit") {
+      if (isRestrictedUnitSelected()) {
+        if (!YARAIDO_DOOR_IDS.has(state.door)) {
+          state.door = "yaraido2";
+        }
+      } else {
+        if (isRestrictedDoorSelected()) {
+          state.door = "normal";
+        }
+      }
     }
   }
 
@@ -268,24 +286,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const unitWrap = document.querySelector(`[data-part="unit"]`);
     if (unitWrap) {
-      const restrictUnit = isRestrictedDoorSelected();
-
       unitWrap.querySelectorAll("button.opt").forEach((btn) => {
-        const isAllowed = !restrictUnit || YARAIDO_UNIT_IDS.has(btn.dataset.opt);
-        btn.disabled = !isAllowed;
-        btn.title = !isAllowed ? "この上台戸板では選択できません" : "";
+        btn.disabled = false;
+        btn.title = "";
       });
+
+      if (restrictionSource === "door" && isRestrictedDoorSelected()) {
+        unitWrap.querySelectorAll("button.opt").forEach((btn) => {
+          const isAllowed = YARAIDO_UNIT_IDS.has(btn.dataset.opt);
+          btn.disabled = !isAllowed;
+          btn.title = !isAllowed ? "この上台戸板では選択できません" : "";
+        });
+      }
     }
 
     const doorWrap = document.querySelector(`[data-part="door"]`);
     if (doorWrap) {
-      const restrictDoor = isRestrictedUnitSelected();
-
       doorWrap.querySelectorAll("button.opt").forEach((btn) => {
-        const isAllowed = !restrictDoor || YARAIDO_DOOR_IDS.has(btn.dataset.opt);
-        btn.disabled = !isAllowed;
-        btn.title = !isAllowed ? "この下台戸板では選択できません" : "";
+        btn.disabled = false;
+        btn.title = "";
       });
+
+      if (restrictionSource === "unit" && isRestrictedUnitSelected()) {
+        doorWrap.querySelectorAll("button.opt").forEach((btn) => {
+          const isAllowed = YARAIDO_DOOR_IDS.has(btn.dataset.opt);
+          btn.disabled = !isAllowed;
+          btn.title = !isAllowed ? "この下台戸板では選択できません" : "";
+        });
+      }
     }
   }
 
@@ -363,10 +391,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const opt = getOpt(partKey, optId);
     if (!part || !opt) return;
 
-    const prevUnit = state.unit;
     const prevDoor = state.door;
+    const prevUnit = state.unit;
 
     state[partKey] = optId;
+
+    if (partKey === "door" || partKey === "unit") {
+      restrictionSource = partKey;
+    }
 
     normalizeState();
     syncUIFromState();
@@ -374,21 +406,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!silent) {
       let msg = `${part.jp}：${opt.label}`;
 
-      if (partKey === "door" && isRestrictedDoorSelected()) {
-        if (prevUnit !== state.unit) {
+      if (partKey === "door") {
+        if (restrictionSource === "door" && isRestrictedDoorSelected()) {
+          if (prevUnit !== state.unit) {
+            const unitOpt = getOpt("unit", state.unit);
+            msg += `（下台戸板を${unitOpt.label}に変更）`;
+          } else {
+            msg += "（下台戸板は矢来堂のみ選択可能）";
+          }
+        } else if (restrictionSource === "door" && prevUnit !== state.unit) {
           const unitOpt = getOpt("unit", state.unit);
           msg += `（下台戸板を${unitOpt.label}に変更）`;
-        } else {
-          msg += "（下台戸板は矢来堂のみ選択可能）";
         }
       }
 
-      if (partKey === "unit" && isRestrictedUnitSelected()) {
-        if (prevDoor !== state.door) {
+      if (partKey === "unit") {
+        if (restrictionSource === "unit" && isRestrictedUnitSelected()) {
+          if (prevDoor !== state.door) {
+            const doorOpt = getOpt("door", state.door);
+            msg += `（上台戸板を${doorOpt.label}に変更）`;
+          } else {
+            msg += "（上台戸板は矢来堂のみ選択可能）";
+          }
+        } else if (restrictionSource === "unit" && prevDoor !== state.door) {
           const doorOpt = getOpt("door", state.door);
           msg += `（上台戸板を${doorOpt.label}に変更）`;
-        } else {
-          msg += "（上台戸板は矢来堂のみ選択可能）";
         }
       }
 
@@ -440,6 +482,8 @@ document.addEventListener("DOMContentLoaded", () => {
     PARTS.forEach((part) => {
       state[part.key] = part.defaultId;
     });
+
+    restrictionSource = null;
 
     normalizeState();
     syncUIFromState();
