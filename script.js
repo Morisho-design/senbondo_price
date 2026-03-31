@@ -107,12 +107,12 @@ document.addEventListener("DOMContentLoaded", () => {
       "towazakura-w": 19500
     },
     back: {
-      iris: 1500,
-      lily: 6000,
-      uzunomichi: 6000
+     "iris": 1500,
+      "lily": 6000,
+      "uzunomichi": 6000
     },
     unit: {
-      senbondo_zenmen: 9000
+      "senbondo_zenmen": 9000
     }
   };
 
