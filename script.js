@@ -112,8 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
       uzunomichi: 6000
     },
     unit: {
-      senbondo_zenmen: 9000,
-      yaraidozenmen: 0
+      senbondo_zenmen: 9000
     }
   };
 
