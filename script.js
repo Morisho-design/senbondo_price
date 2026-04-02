@@ -104,7 +104,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "sakuranamiki-w": 19500,
       "towazakura-kokutan": 19500,
       "towazakura-shitan": 19500,
-      "towazakura-w": 19500
+      "towazakura-w": 19500,
+      "donsu": 1500
     },
     back: {
       iris: 1500,
