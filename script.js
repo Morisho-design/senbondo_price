@@ -107,8 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "towazakura-w": 19500,
        "donsu": 1500,
        "kokutan": 1500,
-       "shitan": 1500,
-       "shitan": 1500,
+       "shitan": 1500
     },
     back: {
       iris: 1500,
