@@ -89,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const PRICE_MAP = {
     door: {
-      oborozakura: 6000,
+      oborozakura: 10000,
       uzunomichi: 36000
     },
     center: {
