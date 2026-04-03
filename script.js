@@ -135,9 +135,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function toHalfWidth(str) {
-    return str.replace(/[！-～]/g, s =>
-      String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
-    ).replace(/　/g, " ");
+    return str
+      .replace(/[！-～]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+      .replace(/　/g, " ");
   }
 
   function normalizePassword(str) {
@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => {
       t.classList.remove("show");
-    }, 1300);
+    }, 1600);
   }
 
   function setImg(id, src) {
@@ -196,10 +196,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${mm}${dd}${hh}${mi}`;
   }
 
-  function updateOrderCodeDisplay(orderCode = "") {
-    const el = $("orderCodeDisplay");
+  function getOrderCodeInput() {
+    return $("orderCodeInput");
+  }
+
+  function getOrderCodeValue() {
+    const el = getOrderCodeInput();
+    if (!el) return "";
+    return String(el.value || "").replace(/\D/g, "").slice(0, 8);
+  }
+
+  function setOrderCodeValue(orderCode = "") {
+    const el = getOrderCodeInput();
     if (!el) return;
-    el.textContent = `コード：${orderCode || "未発番"}`;
+    el.value = String(orderCode || "").replace(/\D/g, "").slice(0, 8);
+  }
+
+  function ensureOrderCode(date = new Date()) {
+    let code = getOrderCodeValue();
+    if (!code) {
+      code = generateOrderCode(date);
+      setOrderCodeValue(code);
+    }
+    return code;
+  }
+
+  function isValidOrderCode(code) {
+    return /^\d{8}$/.test(code);
   }
 
   function buildCustomerFileName(ext = "pdf", orderCode = "") {
@@ -212,32 +235,173 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${safeName}${suffix}.${ext}`;
   }
 
-  async function saveBlobAsFile(blob, filename) {
-    const file = new File([blob], filename, { type: blob.type });
+  function isIOSLike() {
+    const ua = navigator.userAgent || "";
+    const platform = navigator.platform || "";
+    const touchPoints = navigator.maxTouchPoints || 0;
 
-    if (navigator.canShare && navigator.share) {
+    return /iPhone|iPad|iPod/i.test(ua) ||
+      (platform === "MacIntel" && touchPoints > 1);
+  }
+
+  function openImagePreview(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const preview = window.open("", "_blank");
+
+    if (!preview) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      toast("画像を開きました");
+      return;
+    }
+
+    const safeTitle = String(filename).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    preview.document.open();
+    preview.document.write(`<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${safeTitle}</title>
+<style>
+  body{
+    margin:0;
+    background:#111;
+    color:#fff;
+    font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;
+  }
+  .wrap{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  .bar{
+    position:sticky;
+    top:0;
+    background:rgba(17,17,17,.95);
+    padding:14px 16px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    z-index:10;
+  }
+  .title{
+    font-size:14px;
+    font-weight:700;
+    margin-bottom:6px;
+    word-break:break-all;
+  }
+  .note{
+    font-size:12px;
+    line-height:1.6;
+    color:rgba(255,255,255,.8);
+  }
+  .imgWrap{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  }
+  img{
+    max-width:100%;
+    height:auto;
+    background:#fff;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <div class="title">${safeTitle}</div>
+      <div class="note">iPhone / iPad は画像を長押しして保存、または共有してください。</div>
+    </div>
+    <div class="imgWrap">
+      <img src="${url}" alt="${safeTitle}">
+    </div>
+  </div>
+</body>
+</html>`);
+    preview.document.close();
+
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast("画像プレビューを開きました");
+  }
+
+  async function saveBlobToDevice(blob, filename, kind = "file") {
+    const supportsSavePicker =
+      typeof window.showSaveFilePicker === "function" &&
+      window.isSecureContext === true &&
+      !isIOSLike();
+
+    if (supportsSavePicker) {
       try {
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: filename
-          });
-          return true;
-        }
+        const lower = filename.toLowerCase();
+        const isPdf = lower.endsWith(".pdf");
+        const extensions = isPdf ? [".pdf"] : [".jpg", ".jpeg"];
+        const mime = isPdf ? "application/pdf" : "image/jpeg";
+
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [
+            {
+              description: isPdf ? "PDFファイル" : "JPEG画像",
+              accept: { [mime]: extensions }
+            }
+          ]
+        });
+
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return "saved";
       } catch (err) {
-        console.warn("share failed:", err);
+        if (err && err.name === "AbortError") {
+          return "cancel";
+        }
+        console.warn("showSaveFilePicker failed:", err);
       }
     }
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return true;
+    if (kind === "image" && isIOSLike()) {
+      openImagePreview(blob, filename);
+      return "preview";
+    }
+
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+      if (kind === "image") {
+        setTimeout(() => {
+          openImagePreview(blob, filename);
+        }, 400);
+        return "download+preview";
+      }
+
+      return "saved";
+    } catch (err) {
+      console.error(err);
+      if (kind === "image") {
+        openImagePreview(blob, filename);
+        return "preview";
+      }
+      return "error";
+    }
   }
 
   function normalizeState() {
@@ -254,7 +418,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const offBtn = hashWrap.querySelector(`button.opt[data-opt="off"]`);
       if (offBtn) {
         offBtn.disabled = mustHashiraOn;
-        offBtn.title = mustHashiraOn ? "背板中央が未選択以外のときは柱OFFにできません" : "";
+        offBtn.title = mustHashiraOn
+          ? "背板中央が未選択以外のときは柱OFFにできません"
+          : "";
       }
     }
   }
@@ -273,7 +439,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const price = PRICE_MAP[partKey] && PRICE_MAP[partKey][optId] ? PRICE_MAP[partKey][optId] : 0;
+      const price = PRICE_MAP[partKey] && PRICE_MAP[partKey][optId]
+        ? PRICE_MAP[partKey][optId]
+        : 0;
+
       if (price <= 0) return;
 
       const part = getPart(partKey);
@@ -307,7 +476,9 @@ document.addEventListener("DOMContentLoaded", () => {
       $("price-breakdown").textContent =
         est.breakdown.length === 0
           ? "加算パーツはありません。"
-          : est.breakdown.map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
+          : est.breakdown
+              .map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`)
+              .join("\n");
     }
   }
 
@@ -399,16 +570,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const mi = String(now.getMinutes()).padStart(2, "0");
     const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
 
-    const orderCode = exportInfo.orderCode || generateOrderCode(now);
+    const orderCode = exportInfo.orderCode || ensureOrderCode(now);
     const staffName = $("staffName")?.value.trim() || "未入力";
     const customerName = $("customerName")?.value.trim() || "未入力";
     const memo = $("memo")?.value.trim() || "なし";
 
-    updateOrderCodeDisplay(orderCode);
-
     if ($("exportTitle")) {
-      $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
+      $("exportTitle").textContent =
+        `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
     }
+
     if ($("exportMeta")) {
       $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
     }
@@ -422,17 +593,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if ($("exp-sel-door")) $("exp-sel-door").textContent = $("sel-door")?.textContent || "";
     if ($("exp-sel-center")) $("exp-sel-center").textContent = $("sel-center")?.textContent || "";
+
     if ($("exp-sel-hashira")) {
       const hashiraText = $("sel-hashira")?.textContent || "";
       $("exp-sel-hashira").textContent = hashiraText === "ON" ? "有り" : "無し";
     }
+
     if ($("exp-sel-back")) $("exp-sel-back").textContent = $("sel-back")?.textContent || "";
     if ($("exp-sel-unit")) $("exp-sel-unit").textContent = $("sel-unit")?.textContent || "";
     if ($("exp-memo")) $("exp-memo").textContent = memo;
 
     if ($("exp-price-add")) $("exp-price-add").textContent = $("price-add")?.textContent || "¥0";
-    if ($("exp-price-note")) $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
-    if ($("exp-price-breakdown")) $("exp-price-breakdown").textContent = $("price-breakdown")?.textContent || "加算パーツはありません。";
+    if ($("exp-price-note")) {
+      $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
+    }
+    if ($("exp-price-breakdown")) {
+      $("exp-price-breakdown").textContent =
+        $("price-breakdown")?.textContent || "加算パーツはありません。";
+    }
   }
 
   async function exportPdf() {
@@ -441,13 +619,20 @@ document.addEventListener("DOMContentLoaded", () => {
         toast("PDFライブラリが読み込めていません");
         return;
       }
+
       if (!window.jspdf || !window.jspdf.jsPDF) {
         toast("PDFライブラリが読み込めていません");
         return;
       }
 
       const exportDate = new Date();
-      const orderCode = generateOrderCode(exportDate);
+      const orderCode = ensureOrderCode(exportDate);
+
+      if (!isValidOrderCode(orderCode)) {
+        toast("コードは8桁の数字で入力してください");
+        return;
+      }
+
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
@@ -474,9 +659,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
 
+      const blob = pdf.output("blob");
       const filename = buildCustomerFileName("pdf", orderCode);
-      pdf.save(filename);
-      toast("PDFを書き出しました");
+      const result = await saveBlobToDevice(blob, filename, "pdf");
+
+      if (result === "saved") toast("PDFを書き出しました");
+      if (result === "cancel") toast("保存をキャンセルしました");
     } catch (err) {
       console.error(err);
       toast("PDF出力に失敗しました");
@@ -491,7 +679,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const exportDate = new Date();
-      const orderCode = generateOrderCode(exportDate);
+      const orderCode = ensureOrderCode(exportDate);
+
+      if (!isValidOrderCode(orderCode)) {
+        toast("コードは8桁の数字で入力してください");
+        return;
+      }
+
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
@@ -516,8 +710,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const filename = buildCustomerFileName("jpg", orderCode);
-      await saveBlobAsFile(blob, filename);
-      toast("画像を書き出しました");
+      const result = await saveBlobToDevice(blob, filename, "image");
+
+      if (result === "saved") toast("画像を書き出しました");
+      if (result === "download+preview") toast("端末によっては開いた画像を長押し保存してください");
+      if (result === "preview") toast("開いた画像を長押し保存してください");
+      if (result === "cancel") toast("保存をキャンセルしました");
     } catch (err) {
       console.error(err);
       toast("画像出力に失敗しました");
@@ -529,6 +727,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const app = $("app");
     if (lockScreen) lockScreen.style.display = "none";
     if (app) app.classList.add("show");
+
     try {
       sessionStorage.setItem(AUTH_KEY, "ok");
     } catch (e) {}
@@ -538,8 +737,10 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       sessionStorage.removeItem(AUTH_KEY);
     } catch (e) {}
+
     const app = $("app");
     const lockScreen = $("lockScreen");
+
     if (app) app.classList.remove("show");
     if (lockScreen) lockScreen.style.display = "flex";
     if ($("passwordInput")) $("passwordInput").value = "";
@@ -566,8 +767,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const resetBtn = $("resetBtn");
   const pdfBtn = $("pdfBtn");
   const imageBtn = $("imageBtn");
+  const orderCodeInput = $("orderCodeInput");
 
-  if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
+  if (unlockBtn) {
+    unlockBtn.addEventListener("click", tryUnlock);
+  }
+
   if (passwordInput) {
     passwordInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") tryUnlock();
@@ -594,9 +799,18 @@ document.addEventListener("DOMContentLoaded", () => {
     imageBtn.addEventListener("click", exportImage);
   }
 
+  if (orderCodeInput) {
+    orderCodeInput.addEventListener("input", () => {
+      const cleaned = String(orderCodeInput.value || "").replace(/\D/g, "").slice(0, 8);
+      if (orderCodeInput.value !== cleaned) {
+        orderCodeInput.value = cleaned;
+      }
+    });
+  }
+
   renderControls();
   resetAll();
-  updateOrderCodeDisplay();
+  setOrderCodeValue("");
 
   try {
     if (sessionStorage.getItem(AUTH_KEY) === "ok") {
