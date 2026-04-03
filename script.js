@@ -87,27 +87,311 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   ];
 
-  /* 省略無し：元のコードそのまま */
+  const PRICE_MAP = {
+    door: {
+      oborozakura: 10000,
+      uzunomichi: 36000
+    },
+    center: {
+      luminous: 2250,
+      kinshi: 1500,
+      w: 1500,
+      uzunomichi: 4500,
+      oborozakura: 4500,
+      "sakuranamiki-kokutan": 19500,
+      "sakuranamiki-shitan": 19500,
+      "sakuranamiki-w": 19500,
+      "towazakura-kokutan": 19500,
+      "towazakura-shitan": 19500,
+      "towazakura-w": 19500,
+      donsu: 1500,
+      kokutan: 1500,
+      shitan: 1500
+    },
+    back: {
+      iris: 1500,
+      lily: 6000,
+      uzunomichi: 6000
+    },
+    unit: {
+      senbondo_zenmen: 9000
+    }
+  };
+
+  const INQUIRY_OPTIONS = {
+    unit: new Set()
+  };
+
+  const state = {
+    door: null,
+    center: null,
+    hashira: null,
+    back: null,
+    unit: null
+  };
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function toHalfWidth(str) {
+    return str.replace(/[！-～]/g, s =>
+      String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+    ).replace(/　/g, " ");
+  }
+
+  function normalizePassword(str) {
+    return toHalfWidth(String(str)).trim();
+  }
+
+  function toast(msg) {
+    const t = $("toast");
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+      t.classList.remove("show");
+    }, 1300);
+  }
+
+  function setImg(id, src) {
+    const el = $(id);
+    if (!el) return;
+    const bust = "v=" + Date.now();
+    el.src = src + (src.includes("?") ? "&" + bust : "?" + bust);
+  }
+
+  function setSelText(selId, label) {
+    const el = $(selId);
+    if (el) el.textContent = label;
+  }
+
+  function setActive(partKey, optId) {
+    const wrap = document.querySelector(`[data-part="${partKey}"]`);
+    if (!wrap) return;
+    wrap.querySelectorAll("button.opt").forEach((btn) => {
+      btn.setAttribute("aria-pressed", btn.dataset.opt === optId ? "true" : "false");
+    });
+  }
+
+  function getPart(partKey) {
+    return PARTS.find((p) => p.key === partKey);
+  }
+
+  function getOpt(partKey, optId) {
+    const part = getPart(partKey);
+    return part ? part.options.find((o) => o.id === optId) : null;
+  }
 
   function formatYen(value) {
     return "¥" + value.toLocaleString("ja-JP");
   }
 
-  /* ===== ここだけ追加 ===== */
-
-  function buildOrderCode() {
-    const now = new Date();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mi = String(now.getMinutes()).padStart(2, "0");
+  function generateOrderCode(date = new Date()) {
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mi = String(date.getMinutes()).padStart(2, "0");
     return `${mm}${dd}${hh}${mi}`;
   }
 
-  /* ===== ここまで追加 ===== */
+  function updateOrderCodeDisplay(orderCode = "") {
+    const el = $("orderCodeDisplay");
+    if (!el) return;
+    el.textContent = `コード：${orderCode || "未発番"}`;
+  }
 
-  function fillExportSheet() {
-    const now = new Date();
+  function buildCustomerFileName(ext = "pdf", orderCode = "") {
+    const customerName = $("customerName")?.value.trim();
+    const baseName = customerName ? `${customerName}様御見積書` : "senbondo御見積書";
+    const safeName = baseName
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/\s+/g, "_");
+    const suffix = orderCode ? `_${orderCode}` : "";
+    return `${safeName}${suffix}.${ext}`;
+  }
+
+  async function saveBlobAsFile(blob, filename) {
+    const file = new File([blob], filename, { type: blob.type });
+
+    if (navigator.canShare && navigator.share) {
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: filename
+          });
+          return true;
+        }
+      } catch (err) {
+        console.warn("share failed:", err);
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+
+  function normalizeState() {
+    if (state.center && state.center !== "normal") {
+      state.hashira = "on";
+    }
+  }
+
+  function updateAvailability() {
+    const mustHashiraOn = state.center && state.center !== "normal";
+
+    const hashWrap = document.querySelector(`[data-part="hashira"]`);
+    if (hashWrap) {
+      const offBtn = hashWrap.querySelector(`button.opt[data-opt="off"]`);
+      if (offBtn) {
+        offBtn.disabled = mustHashiraOn;
+        offBtn.title = mustHashiraOn ? "背板中央が未選択以外のときは柱OFFにできません" : "";
+      }
+    }
+  }
+
+  function calcEstimate() {
+    let add = 0;
+    let inquiry = false;
+    const breakdown = [];
+
+    Object.keys(state).forEach((partKey) => {
+      const optId = state[partKey];
+      if (!optId || optId === "normal" || optId === "on" || optId === "off") return;
+
+      if (INQUIRY_OPTIONS[partKey] && INQUIRY_OPTIONS[partKey].has(optId)) {
+        inquiry = true;
+        return;
+      }
+
+      const price = PRICE_MAP[partKey] && PRICE_MAP[partKey][optId] ? PRICE_MAP[partKey][optId] : 0;
+      if (price <= 0) return;
+
+      const part = getPart(partKey);
+      const opt = getOpt(partKey, optId);
+
+      breakdown.push({
+        part: part.jp,
+        option: opt.label,
+        price
+      });
+
+      add += price;
+    });
+
+    return {
+      base: BASE_PRICE,
+      add,
+      total: BASE_PRICE + add,
+      inquiry,
+      breakdown
+    };
+  }
+
+  function updateEstimate() {
+    const est = calcEstimate();
+
+    if ($("price-add")) $("price-add").textContent = formatYen(est.add);
+    if ($("price-note")) $("price-note").textContent = "※すべて税別価格です。";
+
+    if ($("price-breakdown")) {
+      $("price-breakdown").textContent =
+        est.breakdown.length === 0
+          ? "加算パーツはありません。"
+          : est.breakdown.map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
+    }
+  }
+
+  function syncUIFromState() {
+    normalizeState();
+
+    PARTS.forEach((part) => {
+      const opt = getOpt(part.key, state[part.key]);
+      if (!opt) return;
+      setImg(part.layerId, opt.file);
+      setSelText(part.selId, opt.label);
+      setActive(part.key, opt.id);
+    });
+
+    updateAvailability();
+    updateEstimate();
+  }
+
+  function apply(partKey, optId, silent = false) {
+    const part = getPart(partKey);
+    const opt = getOpt(partKey, optId);
+    if (!part || !opt) return;
+
+    state[partKey] = optId;
+
+    normalizeState();
+    syncUIFromState();
+
+    if (!silent) {
+      let msg = `${part.jp}：${opt.label}`;
+      if (partKey === "center" && state.center !== "normal") {
+        msg += "（柱はON固定）";
+      }
+      toast(msg);
+    }
+  }
+
+  function renderControls() {
+    const root = $("controls");
+    if (!root) return;
+    root.innerHTML = "";
+
+    PARTS.forEach((part) => {
+      const box = document.createElement("section");
+      box.className = "group";
+
+      const head = document.createElement("div");
+      head.className = "groupTitle";
+      head.innerHTML = `<h3>${part.jp}</h3><div class="note">${part.options.length}項目</div>`;
+      box.appendChild(head);
+
+      const grid = document.createElement("div");
+      grid.className = "btnGrid";
+      grid.dataset.part = part.key;
+
+      part.options.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.className = "opt";
+        btn.type = "button";
+        btn.textContent = opt.label;
+        btn.dataset.opt = opt.id;
+        btn.setAttribute("aria-pressed", "false");
+        btn.addEventListener("click", () => apply(part.key, opt.id));
+        grid.appendChild(btn);
+      });
+
+      box.appendChild(grid);
+      root.appendChild(box);
+    });
+  }
+
+  function resetAll() {
+    setImg("layer-base", BASE_FILE);
+
+    PARTS.forEach((part) => {
+      state[part.key] = part.defaultId;
+    });
+
+    normalizeState();
+    syncUIFromState();
+  }
+
+  function fillExportSheet(exportInfo = {}) {
+    const now = exportInfo.date instanceof Date ? exportInfo.date : new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
@@ -115,26 +399,212 @@ document.addEventListener("DOMContentLoaded", () => {
     const mi = String(now.getMinutes()).padStart(2, "0");
     const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
 
+    const orderCode = exportInfo.orderCode || generateOrderCode(now);
     const staffName = $("staffName")?.value.trim() || "未入力";
     const customerName = $("customerName")?.value.trim() || "未入力";
     const memo = $("memo")?.value.trim() || "なし";
 
-    /* ===== ここ追加 ===== */
-
-    const orderCode = buildOrderCode();
+    updateOrderCodeDisplay(orderCode);
 
     if ($("exportTitle")) {
-      $("exportTitle").textContent =
-        `${dateText}　担当：${staffName}　お客様名：${customerName}様（No.${orderCode}）`;
+      $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
     }
-
-    /* ===== ここまで ===== */
-
     if ($("exportMeta")) {
       $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
     }
 
-    /* 以下すべて元のまま */
+    if ($("exp-base")) $("exp-base").src = $("layer-base")?.src || "";
+    if ($("exp-unit")) $("exp-unit").src = $("layer-unit")?.src || "";
+    if ($("exp-back")) $("exp-back").src = $("layer-back")?.src || "";
+    if ($("exp-center")) $("exp-center").src = $("layer-center")?.src || "";
+    if ($("exp-hashira")) $("exp-hashira").src = $("layer-hashira")?.src || "";
+    if ($("exp-door")) $("exp-door").src = $("layer-door")?.src || "";
+
+    if ($("exp-sel-door")) $("exp-sel-door").textContent = $("sel-door")?.textContent || "";
+    if ($("exp-sel-center")) $("exp-sel-center").textContent = $("sel-center")?.textContent || "";
+    if ($("exp-sel-hashira")) {
+      const hashiraText = $("sel-hashira")?.textContent || "";
+      $("exp-sel-hashira").textContent = hashiraText === "ON" ? "有り" : "無し";
+    }
+    if ($("exp-sel-back")) $("exp-sel-back").textContent = $("sel-back")?.textContent || "";
+    if ($("exp-sel-unit")) $("exp-sel-unit").textContent = $("sel-unit")?.textContent || "";
+    if ($("exp-memo")) $("exp-memo").textContent = memo;
+
+    if ($("exp-price-add")) $("exp-price-add").textContent = $("price-add")?.textContent || "¥0";
+    if ($("exp-price-note")) $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
+    if ($("exp-price-breakdown")) $("exp-price-breakdown").textContent = $("price-breakdown")?.textContent || "加算パーツはありません。";
   }
 
+  async function exportPdf() {
+    try {
+      if (typeof html2canvas === "undefined") {
+        toast("PDFライブラリが読み込めていません");
+        return;
+      }
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        toast("PDFライブラリが読み込めていません");
+        return;
+      }
+
+      const exportDate = new Date();
+      const orderCode = generateOrderCode(exportDate);
+      fillExportSheet({ date: exportDate, orderCode });
+
+      const sheet = $("exportSheet");
+      if (!sheet) {
+        toast("PDF出力エリアが見つかりません");
+        return;
+      }
+
+      const canvas = await html2canvas(sheet, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 6;
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2;
+
+      pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
+
+      const filename = buildCustomerFileName("pdf", orderCode);
+      pdf.save(filename);
+      toast("PDFを書き出しました");
+    } catch (err) {
+      console.error(err);
+      toast("PDF出力に失敗しました");
+    }
+  }
+
+  async function exportImage() {
+    try {
+      if (typeof html2canvas === "undefined") {
+        toast("画像出力ライブラリが読み込めていません");
+        return;
+      }
+
+      const exportDate = new Date();
+      const orderCode = generateOrderCode(exportDate);
+      fillExportSheet({ date: exportDate, orderCode });
+
+      const sheet = $("exportSheet");
+      if (!sheet) {
+        toast("出力エリアが見つかりません");
+        return;
+      }
+
+      const canvas = await html2canvas(sheet, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true
+      });
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", 0.95);
+      });
+
+      if (!blob) {
+        toast("画像出力に失敗しました");
+        return;
+      }
+
+      const filename = buildCustomerFileName("jpg", orderCode);
+      await saveBlobAsFile(blob, filename);
+      toast("画像を書き出しました");
+    } catch (err) {
+      console.error(err);
+      toast("画像出力に失敗しました");
+    }
+  }
+
+  function unlockApp() {
+    const lockScreen = $("lockScreen");
+    const app = $("app");
+    if (lockScreen) lockScreen.style.display = "none";
+    if (app) app.classList.add("show");
+    try {
+      sessionStorage.setItem(AUTH_KEY, "ok");
+    } catch (e) {}
+  }
+
+  function lockApp() {
+    try {
+      sessionStorage.removeItem(AUTH_KEY);
+    } catch (e) {}
+    const app = $("app");
+    const lockScreen = $("lockScreen");
+    if (app) app.classList.remove("show");
+    if (lockScreen) lockScreen.style.display = "flex";
+    if ($("passwordInput")) $("passwordInput").value = "";
+    if ($("lockError")) $("lockError").textContent = "";
+  }
+
+  function tryUnlock() {
+    const input = $("passwordInput");
+    const error = $("lockError");
+    const value = normalizePassword(input ? input.value : "");
+
+    if (value === PASSWORD) {
+      if (error) error.textContent = "";
+      unlockApp();
+      toast("ロックを解除しました");
+    } else {
+      if (error) error.textContent = "パスワードが違います。";
+    }
+  }
+
+  const unlockBtn = $("unlockBtn");
+  const passwordInput = $("passwordInput");
+  const lockBackBtn = $("lockBackBtn");
+  const resetBtn = $("resetBtn");
+  const pdfBtn = $("pdfBtn");
+  const imageBtn = $("imageBtn");
+
+  if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
+  if (passwordInput) {
+    passwordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") tryUnlock();
+    });
+  }
+
+  if (lockBackBtn) {
+    lockBackBtn.addEventListener("click", () => {
+      if (confirm("画面を施錠しますか？")) lockApp();
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      if (confirm("カスタマイズを初期状態に戻しますか？")) resetAll();
+    });
+  }
+
+  if (pdfBtn) {
+    pdfBtn.addEventListener("click", exportPdf);
+  }
+
+  if (imageBtn) {
+    imageBtn.addEventListener("click", exportImage);
+  }
+
+  renderControls();
+  resetAll();
+  updateOrderCodeDisplay();
+
+  try {
+    if (sessionStorage.getItem(AUTH_KEY) === "ok") {
+      unlockApp();
+    }
+  } catch (e) {}
+
+  if (passwordInput) {
+    passwordInput.focus();
+  }
 });
