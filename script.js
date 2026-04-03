@@ -135,9 +135,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function toHalfWidth(str) {
-    return str
-      .replace(/[！-～]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
-      .replace(/　/g, " ");
+    return str.replace(/[！-～]/g, s =>
+      String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+    ).replace(/　/g, " ");
   }
 
   function normalizePassword(str) {
@@ -196,33 +196,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${mm}${dd}${hh}${mi}`;
   }
 
-  function getOrderCodeInput() {
-    return $("orderCodeInput");
-  }
-
-  function getOrderCodeValue() {
-    const el = getOrderCodeInput();
-    if (!el) return "";
-    return String(el.value || "").replace(/\D/g, "").slice(0, 8);
-  }
-
-  function setOrderCodeValue(orderCode = "") {
-    const el = getOrderCodeInput();
+  function updateOrderCodeDisplay(orderCode = "") {
+    const el = $("orderCodeDisplay");
     if (!el) return;
-    el.value = String(orderCode || "").replace(/\D/g, "").slice(0, 8);
-  }
-
-  function ensureOrderCode(date = new Date()) {
-    let code = getOrderCodeValue();
-    if (!code) {
-      code = generateOrderCode(date);
-      setOrderCodeValue(code);
-    }
-    return code;
-  }
-
-  function isValidOrderCode(code) {
-    return /^\d{8}$/.test(code);
+    el.textContent = `コード：${orderCode || "未発番"}`;
   }
 
   function buildCustomerFileName(ext = "pdf", orderCode = "") {
@@ -235,38 +212,20 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${safeName}${suffix}.${ext}`;
   }
 
-  async function saveBlobToDevice(blob, filename) {
-    const supportsSavePicker =
-      typeof window.showSaveFilePicker === "function" &&
-      window.isSecureContext === true;
+  async function saveBlobAsFile(blob, filename) {
+    const file = new File([blob], filename, { type: blob.type });
 
-    if (supportsSavePicker) {
+    if (navigator.canShare && navigator.share) {
       try {
-        const extension = filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")
-          ? [".jpg", ".jpeg"]
-          : [".pdf"];
-
-        const mime = blob.type || (extension.includes(".pdf") ? "application/pdf" : "image/jpeg");
-
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [
-            {
-              description: mime === "application/pdf" ? "PDFファイル" : "JPEG画像",
-              accept: { [mime]: extension }
-            }
-          ]
-        });
-
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        return true;
-      } catch (err) {
-        if (err && err.name === "AbortError") {
-          return false;
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: filename
+          });
+          return true;
         }
-        console.warn("showSaveFilePicker failed:", err);
+      } catch (err) {
+        console.warn("share failed:", err);
       }
     }
 
@@ -274,13 +233,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
-    a.rel = "noopener";
-    a.style.display = "none";
     document.body.appendChild(a);
     a.click();
     a.remove();
-
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     return true;
   }
 
@@ -298,9 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const offBtn = hashWrap.querySelector(`button.opt[data-opt="off"]`);
       if (offBtn) {
         offBtn.disabled = mustHashiraOn;
-        offBtn.title = mustHashiraOn
-          ? "背板中央が未選択以外のときは柱OFFにできません"
-          : "";
+        offBtn.title = mustHashiraOn ? "背板中央が未選択以外のときは柱OFFにできません" : "";
       }
     }
   }
@@ -319,10 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const price = PRICE_MAP[partKey] && PRICE_MAP[partKey][optId]
-        ? PRICE_MAP[partKey][optId]
-        : 0;
-
+      const price = PRICE_MAP[partKey] && PRICE_MAP[partKey][optId] ? PRICE_MAP[partKey][optId] : 0;
       if (price <= 0) return;
 
       const part = getPart(partKey);
@@ -356,9 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
       $("price-breakdown").textContent =
         est.breakdown.length === 0
           ? "加算パーツはありません。"
-          : est.breakdown
-              .map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`)
-              .join("\n");
+          : est.breakdown.map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
     }
   }
 
@@ -450,16 +399,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const mi = String(now.getMinutes()).padStart(2, "0");
     const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
 
-    const orderCode = exportInfo.orderCode || ensureOrderCode(now);
+    const orderCode = exportInfo.orderCode || generateOrderCode(now);
     const staffName = $("staffName")?.value.trim() || "未入力";
     const customerName = $("customerName")?.value.trim() || "未入力";
     const memo = $("memo")?.value.trim() || "なし";
 
-    if ($("exportTitle")) {
-      $("exportTitle").textContent =
-        `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
-    }
+    updateOrderCodeDisplay(orderCode);
 
+    if ($("exportTitle")) {
+      $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
+    }
     if ($("exportMeta")) {
       $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
     }
@@ -473,24 +422,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if ($("exp-sel-door")) $("exp-sel-door").textContent = $("sel-door")?.textContent || "";
     if ($("exp-sel-center")) $("exp-sel-center").textContent = $("sel-center")?.textContent || "";
-
     if ($("exp-sel-hashira")) {
       const hashiraText = $("sel-hashira")?.textContent || "";
       $("exp-sel-hashira").textContent = hashiraText === "ON" ? "有り" : "無し";
     }
-
     if ($("exp-sel-back")) $("exp-sel-back").textContent = $("sel-back")?.textContent || "";
     if ($("exp-sel-unit")) $("exp-sel-unit").textContent = $("sel-unit")?.textContent || "";
     if ($("exp-memo")) $("exp-memo").textContent = memo;
 
     if ($("exp-price-add")) $("exp-price-add").textContent = $("price-add")?.textContent || "¥0";
-    if ($("exp-price-note")) {
-      $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
-    }
-    if ($("exp-price-breakdown")) {
-      $("exp-price-breakdown").textContent =
-        $("price-breakdown")?.textContent || "加算パーツはありません。";
-    }
+    if ($("exp-price-note")) $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
+    if ($("exp-price-breakdown")) $("exp-price-breakdown").textContent = $("price-breakdown")?.textContent || "加算パーツはありません。";
   }
 
   async function exportPdf() {
@@ -499,20 +441,13 @@ document.addEventListener("DOMContentLoaded", () => {
         toast("PDFライブラリが読み込めていません");
         return;
       }
-
       if (!window.jspdf || !window.jspdf.jsPDF) {
         toast("PDFライブラリが読み込めていません");
         return;
       }
 
       const exportDate = new Date();
-      const orderCode = ensureOrderCode(exportDate);
-
-      if (!isValidOrderCode(orderCode)) {
-        toast("コードは8桁の数字で入力してください");
-        return;
-      }
-
+      const orderCode = generateOrderCode(exportDate);
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
@@ -539,13 +474,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       pdf.addImage(imgData, "JPEG", margin, margin, usableW, usableH);
 
-      const blob = pdf.output("blob");
       const filename = buildCustomerFileName("pdf", orderCode);
-      const saved = await saveBlobToDevice(blob, filename);
-
-      if (saved) {
-        toast("PDFを書き出しました");
-      }
+      pdf.save(filename);
+      toast("PDFを書き出しました");
     } catch (err) {
       console.error(err);
       toast("PDF出力に失敗しました");
@@ -560,13 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const exportDate = new Date();
-      const orderCode = ensureOrderCode(exportDate);
-
-      if (!isValidOrderCode(orderCode)) {
-        toast("コードは8桁の数字で入力してください");
-        return;
-      }
-
+      const orderCode = generateOrderCode(exportDate);
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
@@ -591,11 +516,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const filename = buildCustomerFileName("jpg", orderCode);
-      const saved = await saveBlobToDevice(blob, filename);
-
-      if (saved) {
-        toast("画像を書き出しました");
-      }
+      await saveBlobAsFile(blob, filename);
+      toast("画像を書き出しました");
     } catch (err) {
       console.error(err);
       toast("画像出力に失敗しました");
@@ -607,7 +529,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const app = $("app");
     if (lockScreen) lockScreen.style.display = "none";
     if (app) app.classList.add("show");
-
     try {
       sessionStorage.setItem(AUTH_KEY, "ok");
     } catch (e) {}
@@ -617,10 +538,8 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       sessionStorage.removeItem(AUTH_KEY);
     } catch (e) {}
-
     const app = $("app");
     const lockScreen = $("lockScreen");
-
     if (app) app.classList.remove("show");
     if (lockScreen) lockScreen.style.display = "flex";
     if ($("passwordInput")) $("passwordInput").value = "";
@@ -647,12 +566,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const resetBtn = $("resetBtn");
   const pdfBtn = $("pdfBtn");
   const imageBtn = $("imageBtn");
-  const orderCodeInput = $("orderCodeInput");
 
-  if (unlockBtn) {
-    unlockBtn.addEventListener("click", tryUnlock);
-  }
-
+  if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
   if (passwordInput) {
     passwordInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") tryUnlock();
@@ -679,18 +594,9 @@ document.addEventListener("DOMContentLoaded", () => {
     imageBtn.addEventListener("click", exportImage);
   }
 
-  if (orderCodeInput) {
-    orderCodeInput.addEventListener("input", () => {
-      const cleaned = String(orderCodeInput.value || "").replace(/\D/g, "").slice(0, 8);
-      if (orderCodeInput.value !== cleaned) {
-        orderCodeInput.value = cleaned;
-      }
-    });
-  }
-
   renderControls();
   resetAll();
-  setOrderCodeValue("");
+  updateOrderCodeDisplay();
 
   try {
     if (sessionStorage.getItem(AUTH_KEY) === "ok") {
