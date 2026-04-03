@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => {
       t.classList.remove("show");
-    }, 1600);
+    }, 1800);
   }
 
   function setImg(id, src) {
@@ -222,12 +222,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function resolveOrderCode(date = new Date()) {
     const inputValue = sanitizeOrderCodeValue(getOrderCodeValue());
-
     if (isValidOrderCode(inputValue)) {
       setOrderCodeValue(inputValue);
       return inputValue;
     }
-
     const autoCode = generateOrderCode(date);
     setOrderCodeValue(autoCode);
     return autoCode;
@@ -247,31 +245,65 @@ document.addEventListener("DOMContentLoaded", () => {
     const ua = navigator.userAgent || "";
     const platform = navigator.platform || "";
     const touchPoints = navigator.maxTouchPoints || 0;
-
-    return /iPhone|iPad|iPod/i.test(ua) ||
-      (platform === "MacIntel" && touchPoints > 1);
+    return /iPhone|iPad|iPod/i.test(ua) || (platform === "MacIntel" && touchPoints > 1);
   }
 
-  function openImagePreview(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const preview = window.open("", "_blank");
+  function openPreviewWindowNow() {
+    const win = window.open("", "_blank");
+    if (!win) return null;
 
-    if (!preview) {
-      const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+    try {
+      win.document.open();
+      win.document.write(`<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>画像を準備中</title>
+<style>
+  body{
+    margin:0;
+    background:#111;
+    color:#fff;
+    font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+  }
+  .box{
+    text-align:center;
+    padding:24px;
+    line-height:1.8;
+    font-size:14px;
+  }
+</style>
+</head>
+<body>
+  <div class="box">画像を準備しています…</div>
+</body>
+</html>`);
+      win.document.close();
+    } catch (e) {}
+    return win;
+  }
+
+  function writeImagePreview(preview, blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const safeTitle = String(filename).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    if (!preview || preview.closed) {
+      const fallback = window.open(url, "_blank");
+      if (!fallback) {
+        toast("画像プレビューを開けませんでした");
+      }
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      toast("画像を開きました");
       return;
     }
 
-    const safeTitle = String(filename).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    preview.document.open();
-    preview.document.write(`<!doctype html>
+    try {
+      preview.document.open();
+      preview.document.write(`<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -327,7 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <div class="wrap">
     <div class="bar">
       <div class="title">${safeTitle}</div>
-      <div class="note">iPhone / iPad は画像を長押しして保存、または共有してください。</div>
+      <div class="note">開いた画像を長押しして保存、または共有してください。</div>
     </div>
     <div class="imgWrap">
       <img src="${url}" alt="${safeTitle}">
@@ -335,13 +367,15 @@ document.addEventListener("DOMContentLoaded", () => {
   </div>
 </body>
 </html>`);
-    preview.document.close();
-
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    toast("画像プレビューを開きました");
+      preview.document.close();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      preview.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
   }
 
-  async function saveBlobToDevice(blob, filename, kind = "file") {
+  async function saveBlobToDevice(blob, filename, kind = "file", previewWindow = null) {
     const supportsSavePicker =
       typeof window.showSaveFilePicker === "function" &&
       window.isSecureContext === true &&
@@ -369,15 +403,13 @@ document.addEventListener("DOMContentLoaded", () => {
         await writable.close();
         return "saved";
       } catch (err) {
-        if (err && err.name === "AbortError") {
-          return "cancel";
-        }
+        if (err && err.name === "AbortError") return "cancel";
         console.warn("showSaveFilePicker failed:", err);
       }
     }
 
     if (kind === "image" && isIOSLike()) {
-      openImagePreview(blob, filename);
+      writeImagePreview(previewWindow, blob, filename);
       return "preview";
     }
 
@@ -391,13 +423,14 @@ document.addEventListener("DOMContentLoaded", () => {
       document.body.appendChild(a);
       a.click();
       a.remove();
-
       setTimeout(() => URL.revokeObjectURL(url), 1500);
 
       if (kind === "image") {
-        setTimeout(() => {
-          openImagePreview(blob, filename);
-        }, 400);
+        if (previewWindow && !previewWindow.closed) {
+          setTimeout(() => {
+            writeImagePreview(previewWindow, blob, filename);
+          }, 400);
+        }
         return "download+preview";
       }
 
@@ -405,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) {
       console.error(err);
       if (kind === "image") {
-        openImagePreview(blob, filename);
+        writeImagePreview(previewWindow, blob, filename);
         return "preview";
       }
       return "error";
@@ -420,15 +453,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateAvailability() {
     const mustHashiraOn = state.center && state.center !== "normal";
-
     const hashWrap = document.querySelector(`[data-part="hashira"]`);
     if (hashWrap) {
       const offBtn = hashWrap.querySelector(`button.opt[data-opt="off"]`);
       if (offBtn) {
         offBtn.disabled = mustHashiraOn;
-        offBtn.title = mustHashiraOn
-          ? "背板中央が未選択以外のときは柱OFFにできません"
-          : "";
+        offBtn.title = mustHashiraOn ? "背板中央が未選択以外のときは柱OFFにできません" : "";
       }
     }
   }
@@ -447,10 +477,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const price = PRICE_MAP[partKey] && PRICE_MAP[partKey][optId]
-        ? PRICE_MAP[partKey][optId]
-        : 0;
-
+      const price = PRICE_MAP[partKey] && PRICE_MAP[partKey][optId] ? PRICE_MAP[partKey][optId] : 0;
       if (price <= 0) return;
 
       const part = getPart(partKey);
@@ -476,17 +503,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateEstimate() {
     const est = calcEstimate();
-
     if ($("price-add")) $("price-add").textContent = formatYen(est.add);
     if ($("price-note")) $("price-note").textContent = "※すべて税別価格です。";
-
     if ($("price-breakdown")) {
       $("price-breakdown").textContent =
         est.breakdown.length === 0
           ? "加算パーツはありません。"
-          : est.breakdown
-              .map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`)
-              .join("\n");
+          : est.breakdown.map((item) => `${item.part}：${item.option}　${formatYen(item.price)}`).join("\n");
     }
   }
 
@@ -511,7 +534,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!part || !opt) return;
 
     state[partKey] = optId;
-
     normalizeState();
     syncUIFromState();
 
@@ -560,11 +582,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function resetAll() {
     setImg("layer-base", BASE_FILE);
-
     PARTS.forEach((part) => {
       state[part.key] = part.defaultId;
     });
-
     normalizeState();
     syncUIFromState();
   }
@@ -584,13 +604,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const memo = $("memo")?.value.trim() || "なし";
 
     if ($("exportTitle")) {
-      $("exportTitle").textContent =
-        `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
+      $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
     }
-
-    if ($("exportMeta")) {
-      $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
-    }
+    if ($("exportMeta")) $("exportMeta").textContent = "千本堂カスタマイズ仕様書";
 
     if ($("exp-base")) $("exp-base").src = $("layer-base")?.src || "";
     if ($("exp-unit")) $("exp-unit").src = $("layer-unit")?.src || "";
@@ -601,24 +617,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if ($("exp-sel-door")) $("exp-sel-door").textContent = $("sel-door")?.textContent || "";
     if ($("exp-sel-center")) $("exp-sel-center").textContent = $("sel-center")?.textContent || "";
-
     if ($("exp-sel-hashira")) {
       const hashiraText = $("sel-hashira")?.textContent || "";
       $("exp-sel-hashira").textContent = hashiraText === "ON" ? "有り" : "無し";
     }
-
     if ($("exp-sel-back")) $("exp-sel-back").textContent = $("sel-back")?.textContent || "";
     if ($("exp-sel-unit")) $("exp-sel-unit").textContent = $("sel-unit")?.textContent || "";
     if ($("exp-memo")) $("exp-memo").textContent = memo;
 
     if ($("exp-price-add")) $("exp-price-add").textContent = $("price-add")?.textContent || "¥0";
-    if ($("exp-price-note")) {
-      $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
-    }
-    if ($("exp-price-breakdown")) {
-      $("exp-price-breakdown").textContent =
-        $("price-breakdown")?.textContent || "加算パーツはありません。";
-    }
+    if ($("exp-price-note")) $("exp-price-note").textContent = ($("price-note")?.textContent || "").replace(/^※/, "");
+    if ($("exp-price-breakdown")) $("exp-price-breakdown").textContent = $("price-breakdown")?.textContent || "加算パーツはありません。";
   }
 
   async function exportPdf() {
@@ -627,7 +636,6 @@ document.addEventListener("DOMContentLoaded", () => {
         toast("PDFライブラリが読み込めていません");
         return;
       }
-
       if (!window.jspdf || !window.jspdf.jsPDF) {
         toast("PDFライブラリが読み込めていません");
         return;
@@ -635,7 +643,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const exportDate = new Date();
       const orderCode = resolveOrderCode(exportDate);
-
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
@@ -674,21 +681,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function exportImage() {
+  async function exportImage(previewWindow = null) {
     try {
       if (typeof html2canvas === "undefined") {
         toast("画像出力ライブラリが読み込めていません");
+        if (previewWindow && !previewWindow.closed) previewWindow.close();
         return;
       }
 
       const exportDate = new Date();
       const orderCode = resolveOrderCode(exportDate);
-
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
       if (!sheet) {
         toast("出力エリアが見つかりません");
+        if (previewWindow && !previewWindow.closed) previewWindow.close();
         return;
       }
 
@@ -704,18 +712,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!blob) {
         toast("画像出力に失敗しました");
+        if (previewWindow && !previewWindow.closed) previewWindow.close();
         return;
       }
 
       const filename = buildCustomerFileName("jpg", orderCode);
-      const result = await saveBlobToDevice(blob, filename, "image");
+      const result = await saveBlobToDevice(blob, filename, "image", previewWindow);
 
       if (result === "saved") toast("画像を書き出しました");
       if (result === "download+preview") toast("端末によっては開いた画像を長押し保存してください");
       if (result === "preview") toast("開いた画像を長押し保存してください");
-      if (result === "cancel") toast("保存をキャンセルしました");
+      if (result === "cancel") {
+        toast("保存をキャンセルしました");
+        if (previewWindow && !previewWindow.closed) previewWindow.close();
+      }
     } catch (err) {
       console.error(err);
+      if (previewWindow && !previewWindow.closed) previewWindow.close();
       toast("画像出力に失敗しました");
     }
   }
@@ -725,7 +738,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const app = $("app");
     if (lockScreen) lockScreen.style.display = "none";
     if (app) app.classList.add("show");
-
     try {
       sessionStorage.setItem(AUTH_KEY, "ok");
     } catch (e) {}
@@ -738,7 +750,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const app = $("app");
     const lockScreen = $("lockScreen");
-
     if (app) app.classList.remove("show");
     if (lockScreen) lockScreen.style.display = "flex";
     if ($("passwordInput")) $("passwordInput").value = "";
@@ -767,9 +778,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const imageBtn = $("imageBtn");
   const orderCodeInput = $("orderCodeInput");
 
-  if (unlockBtn) {
-    unlockBtn.addEventListener("click", tryUnlock);
-  }
+  if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
 
   if (passwordInput) {
     passwordInput.addEventListener("keydown", (e) => {
@@ -794,7 +803,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (imageBtn) {
-    imageBtn.addEventListener("click", exportImage);
+    imageBtn.addEventListener("click", () => {
+      const previewWindow = isIOSLike() ? openPreviewWindowNow() : null;
+      exportImage(previewWindow);
+    });
   }
 
   if (orderCodeInput) {
@@ -815,7 +827,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   } catch (e) {}
 
-  if (passwordInput) {
-    passwordInput.focus();
-  }
+  if (passwordInput) passwordInput.focus();
 });
