@@ -196,33 +196,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${mm}${dd}${hh}${mi}`;
   }
 
-  function getOrderCodeInput() {
-    return $("orderCodeInput");
-  }
-
-  function getOrderCodeValue() {
-    const el = getOrderCodeInput();
-    if (!el) return "";
-    return String(el.value || "").replace(/\D/g, "").slice(0, 8);
-  }
-
-  function setOrderCodeValue(orderCode = "") {
-    const el = getOrderCodeInput();
+  function updateOrderCodeDisplay(orderCode = "") {
+    const el = $("orderCodeDisplay");
     if (!el) return;
-    el.value = String(orderCode || "").replace(/\D/g, "").slice(0, 8);
-  }
-
-  function ensureOrderCode(date = new Date()) {
-    let code = getOrderCodeValue();
-    if (!code) {
-      code = generateOrderCode(date);
-      setOrderCodeValue(code);
-    }
-    return code;
-  }
-
-  function isValidOrderCode(code) {
-    return /^\d{8}$/.test(code);
+    el.textContent = `コード：${orderCode || "未発番"}`;
   }
 
   function buildCustomerFileName(ext = "pdf", orderCode = "") {
@@ -422,10 +399,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const mi = String(now.getMinutes()).padStart(2, "0");
     const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
 
-    const orderCode = exportInfo.orderCode || ensureOrderCode(now);
+    const orderCode = exportInfo.orderCode || generateOrderCode(now);
     const staffName = $("staffName")?.value.trim() || "未入力";
     const customerName = $("customerName")?.value.trim() || "未入力";
     const memo = $("memo")?.value.trim() || "なし";
+
+    updateOrderCodeDisplay(orderCode);
 
     if ($("exportTitle")) {
       $("exportTitle").textContent = `${dateText}　担当：${staffName}　お客様名：${customerName}様　コード：${orderCode}`;
@@ -468,13 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const exportDate = new Date();
-      const orderCode = ensureOrderCode(exportDate);
-
-      if (!isValidOrderCode(orderCode)) {
-        toast("コードは8桁の数字で入力してください");
-        return;
-      }
-
+      const orderCode = generateOrderCode(exportDate);
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
@@ -518,13 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const exportDate = new Date();
-      const orderCode = ensureOrderCode(exportDate);
-
-      if (!isValidOrderCode(orderCode)) {
-        toast("コードは8桁の数字で入力してください");
-        return;
-      }
-
+      const orderCode = generateOrderCode(exportDate);
       fillExportSheet({ date: exportDate, orderCode });
 
       const sheet = $("exportSheet");
@@ -599,10 +566,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const resetBtn = $("resetBtn");
   const pdfBtn = $("pdfBtn");
   const imageBtn = $("imageBtn");
-  const orderCodeInput = $("orderCodeInput");
 
   if (unlockBtn) unlockBtn.addEventListener("click", tryUnlock);
-
   if (passwordInput) {
     passwordInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") tryUnlock();
@@ -629,18 +594,9 @@ document.addEventListener("DOMContentLoaded", () => {
     imageBtn.addEventListener("click", exportImage);
   }
 
-  if (orderCodeInput) {
-    orderCodeInput.addEventListener("input", () => {
-      const cleaned = String(orderCodeInput.value || "").replace(/\D/g, "").slice(0, 8);
-      if (orderCodeInput.value !== cleaned) {
-        orderCodeInput.value = cleaned;
-      }
-    });
-  }
-
   renderControls();
   resetAll();
-  setOrderCodeValue("");
+  updateOrderCodeDisplay();
 
   try {
     if (sessionStorage.getItem(AUTH_KEY) === "ok") {
