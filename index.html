@@ -81,7 +81,10 @@
   <div class="inputSuffixWrap">
     <input id="customerName" type="text" placeholder="お客様名を入力">
     <span class="inputSuffix">様</span>
-    <span id="orderCodeDisplay" class="orderCodeBadge">コード：未発番</span>
+    <div class="orderCodeInputWrap">
+  <label for="orderCodeInput" class="orderCodeLabel">コード</label>
+  <input id="orderCodeInput" class="orderCodeInput" type="text" inputmode="numeric" maxlength="8" placeholder="未発番">
+</div>
   </div>
 </div>
 
