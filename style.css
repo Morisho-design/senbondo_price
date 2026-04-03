@@ -531,25 +531,3 @@ textarea{
   font-size:13px;
   white-space:nowrap;
 }
-.orderCodeInputWrap{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
-.orderCodeLabel{
-  color:var(--muted);
-  font-size:13px;
-  white-space:nowrap;
-}
-
-.orderCodeInput{
-  width:110px;
-  height:42px;
-  padding:0 12px;
-  border:1px solid var(--border);
-  border-radius:12px;
-  background:#f9fafb;
-  color:var(--text);
-  font-size:13px;
-}
