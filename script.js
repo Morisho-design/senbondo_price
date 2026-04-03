@@ -203,26 +203,34 @@ document.addEventListener("DOMContentLoaded", () => {
   function getOrderCodeValue() {
     const el = getOrderCodeInput();
     if (!el) return "";
-    return String(el.value || "").replace(/\D/g, "").slice(0, 8);
+    return String(el.value || "").trim();
+  }
+
+  function sanitizeOrderCodeValue(value) {
+    return String(value || "").replace(/\D/g, "").slice(0, 8);
   }
 
   function setOrderCodeValue(orderCode = "") {
     const el = getOrderCodeInput();
     if (!el) return;
-    el.value = String(orderCode || "").replace(/\D/g, "").slice(0, 8);
-  }
-
-  function ensureOrderCode(date = new Date()) {
-    let code = getOrderCodeValue();
-    if (!code) {
-      code = generateOrderCode(date);
-      setOrderCodeValue(code);
-    }
-    return code;
+    el.value = sanitizeOrderCodeValue(orderCode);
   }
 
   function isValidOrderCode(code) {
     return /^\d{8}$/.test(code);
+  }
+
+  function resolveOrderCode(date = new Date()) {
+    const inputValue = sanitizeOrderCodeValue(getOrderCodeValue());
+
+    if (isValidOrderCode(inputValue)) {
+      setOrderCodeValue(inputValue);
+      return inputValue;
+    }
+
+    const autoCode = generateOrderCode(date);
+    setOrderCodeValue(autoCode);
+    return autoCode;
   }
 
   function buildCustomerFileName(ext = "pdf", orderCode = "") {
@@ -570,7 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const mi = String(now.getMinutes()).padStart(2, "0");
     const dateText = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
 
-    const orderCode = exportInfo.orderCode || ensureOrderCode(now);
+    const orderCode = exportInfo.orderCode || resolveOrderCode(now);
     const staffName = $("staffName")?.value.trim() || "未入力";
     const customerName = $("customerName")?.value.trim() || "未入力";
     const memo = $("memo")?.value.trim() || "なし";
@@ -626,12 +634,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const exportDate = new Date();
-      const orderCode = ensureOrderCode(exportDate);
-
-      if (!isValidOrderCode(orderCode)) {
-        toast("コードは8桁の数字で入力してください");
-        return;
-      }
+      const orderCode = resolveOrderCode(exportDate);
 
       fillExportSheet({ date: exportDate, orderCode });
 
@@ -679,12 +682,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const exportDate = new Date();
-      const orderCode = ensureOrderCode(exportDate);
-
-      if (!isValidOrderCode(orderCode)) {
-        toast("コードは8桁の数字で入力してください");
-        return;
-      }
+      const orderCode = resolveOrderCode(exportDate);
 
       fillExportSheet({ date: exportDate, orderCode });
 
@@ -801,7 +799,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (orderCodeInput) {
     orderCodeInput.addEventListener("input", () => {
-      const cleaned = String(orderCodeInput.value || "").replace(/\D/g, "").slice(0, 8);
+      const cleaned = sanitizeOrderCodeValue(orderCodeInput.value || "");
       if (orderCodeInput.value !== cleaned) {
         orderCodeInput.value = cleaned;
       }
@@ -810,7 +808,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderControls();
   resetAll();
-  setOrderCodeValue("");
 
   try {
     if (sessionStorage.getItem(AUTH_KEY) === "ok") {
