@@ -531,3 +531,9 @@ textarea{
   font-size:13px;
   white-space:nowrap;
 }
+.orderCodeInput{
+  width:120px;
+  min-width:120px;
+  text-align:center;
+  cursor:pointer;
+}
