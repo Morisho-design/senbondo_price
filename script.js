@@ -130,6 +130,10 @@ document.addEventListener("DOMContentLoaded", () => {
     unit: null
   };
 
+  let orderCodeEditUnlocked = false;
+  let orderCodeTapCount = 0;
+  let orderCodeTapTimer = null;
+
   function $(id) {
     return document.getElementById(id);
   }
@@ -200,14 +204,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return $("orderCodeInput");
   }
 
+  function sanitizeOrderCodeValue(value) {
+    return String(value || "").replace(/\D/g, "").slice(0, 8);
+  }
+
   function getOrderCodeValue() {
     const el = getOrderCodeInput();
     if (!el) return "";
-    return String(el.value || "").trim();
-  }
-
-  function sanitizeOrderCodeValue(value) {
-    return String(value || "").replace(/\D/g, "").slice(0, 8);
+    return sanitizeOrderCodeValue(el.value || "");
   }
 
   function setOrderCodeValue(orderCode = "") {
@@ -221,14 +225,47 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function resolveOrderCode(date = new Date()) {
-    const inputValue = sanitizeOrderCodeValue(getOrderCodeValue());
+    const inputValue = getOrderCodeValue();
     if (isValidOrderCode(inputValue)) {
-      setOrderCodeValue(inputValue);
       return inputValue;
     }
     const autoCode = generateOrderCode(date);
     setOrderCodeValue(autoCode);
     return autoCode;
+  }
+
+  function lockOrderCodeInput() {
+    const input = getOrderCodeInput();
+    if (!input) return;
+    orderCodeEditUnlocked = false;
+    input.readOnly = true;
+    input.setAttribute("readonly", "readonly");
+    input.blur();
+  }
+
+  function unlockOrderCodeInput() {
+    const input = getOrderCodeInput();
+    if (!input) return;
+    orderCodeEditUnlocked = true;
+    input.readOnly = false;
+    input.removeAttribute("readonly");
+    input.focus();
+    input.select();
+    toast("コードを編集できます");
+  }
+
+  function handleOrderCodeTapUnlock() {
+    orderCodeTapCount += 1;
+
+    clearTimeout(orderCodeTapTimer);
+    orderCodeTapTimer = setTimeout(() => {
+      orderCodeTapCount = 0;
+    }, 700);
+
+    if (orderCodeTapCount >= 3) {
+      orderCodeTapCount = 0;
+      unlockOrderCodeInput();
+    }
   }
 
   function buildCustomerFileName(ext = "pdf", orderCode = "") {
@@ -632,6 +669,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function exportPdf() {
     try {
+      lockOrderCodeInput();
+
       if (typeof html2canvas === "undefined") {
         toast("PDFライブラリが読み込めていません");
         return;
@@ -683,6 +722,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function exportImage(previewWindow = null) {
     try {
+      lockOrderCodeInput();
+
       if (typeof html2canvas === "undefined") {
         toast("画像出力ライブラリが読み込めていません");
         if (previewWindow && !previewWindow.closed) previewWindow.close();
@@ -810,10 +851,32 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (orderCodeInput) {
+    lockOrderCodeInput();
+
+    const tapHandler = (e) => {
+      if (!orderCodeEditUnlocked) {
+        e.preventDefault();
+        handleOrderCodeTapUnlock();
+      }
+    };
+
+    orderCodeInput.addEventListener("click", tapHandler);
+    orderCodeInput.addEventListener("touchend", tapHandler);
+
     orderCodeInput.addEventListener("input", () => {
       const cleaned = sanitizeOrderCodeValue(orderCodeInput.value || "");
       if (orderCodeInput.value !== cleaned) {
         orderCodeInput.value = cleaned;
+      }
+    });
+
+    orderCodeInput.addEventListener("blur", () => {
+      lockOrderCodeInput();
+    });
+
+    orderCodeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        orderCodeInput.blur();
       }
     });
   }
